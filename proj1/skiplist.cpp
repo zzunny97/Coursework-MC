@@ -14,7 +14,6 @@
 #include <iostream>
 #include "skiplist2.h"
 
-#define 
 
 using namespace std;
 
@@ -39,6 +38,12 @@ public:
 	QueueNode(char act, int n) {
 		action = act;
 		num = n;
+		next = NULL;
+	}
+	QueueNode& operator=(QueueNode& qn){
+		action = qn.action;
+		num = qn.num;
+		return *this;
 	}
 };
 
@@ -49,7 +54,8 @@ public:
 	int head, tail;
 
 	Queue(int qsize){
-		q = new QueueNode[size];
+		//q = new QueueNode('0',0)[size];
+		q = (QueueNode*)malloc(sizeof(QueueNode)*qsize);
 		size = qsize;
 		head=tail=0;
 	}
@@ -58,26 +64,27 @@ public:
 	}
 	bool Enq(QueueNode node){
 		// queue is full
-		if((tail+1)%qsize==head) {
+		if((tail+1)%size==head) {
 			return false;
 		}
 		q[tail] = node;
-		tail=(tail+1)%qsize;
-
+		tail=(tail+1)%size;
+		return true;
 	}
-	QueueNode* deq(){
-		if(size==0) return NULL;
-		else {
-			QueueNode* ret = head;
-			head = head->next;
-			return ret;
-		}
+	QueueNode* Deq(){
+		//queue is empty
+		if(head==tail)
+			return NULL;
+		QueueNode* ret = &q[head];
+		head = (head+1) % size;
+		return ret;
 	}
 	void PrintAll(){
-		QueueNode* cur = head;
-		while(cur!= NULL) {
-			cout << cur->action << " " << cur->num << endl;			
-			cur = cur->next;
+		int cur = head;
+		
+		while(cur!=tail) {
+			cout << "cur = " << cur << " head = " << head << " tail = " << tail << " "  << q[cur].action << " " << q[cur].num << endl;			
+			cur++;
 		}
 
 	}
@@ -135,12 +142,17 @@ int main(int argc, char* argv[])
 
 	FILE* fin;
 	fin = fopen(fn, "r");
-	Queue q;
+	cout << "make queue" << endl;
+	Queue q(1000010);
+	cout << "enqueue start" << endl;
+	char action;
+	int num;
+	int line=0;
 	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
 		QueueNode qn(action, num);
-		q.enq(qn);
+		q.Enq(qn);
 	}
-	q.PrintAll();
+	//q.PrintAll();
 
 	/*
 	pthread_attr_t attr;
