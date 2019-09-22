@@ -1,5 +1,5 @@
 app.out:
-	g++ -o sum skiplist.cpp -O2
+	g++ -o sum skiplist.cpp -lpthread -O2
 
 clean:
 	rm -rf *.o sum 

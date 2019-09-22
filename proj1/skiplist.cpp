@@ -14,6 +14,8 @@
 #include <iostream>
 #include "skiplist2.h"
 
+#define 
+
 using namespace std;
 
 
@@ -25,14 +27,66 @@ long max = INT_MIN;
 bool done = false;
 
 int num_threads;
-FILE* fin;
 skiplist<int, int> list(0,1000000);
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 
+class QueueNode{
+public:
+	char action;
+	int num;
+	QueueNode* next;
+	QueueNode(char act, int n) {
+		action = act;
+		num = n;
+	}
+};
+
+class Queue{
+public:
+	QueueNode* q;
+	int size;
+	int head, tail;
+
+	Queue(int qsize){
+		q = new QueueNode[size];
+		size = qsize;
+		head=tail=0;
+	}
+	~Queue(){
+		free(q);
+	}
+	bool Enq(QueueNode node){
+		// queue is full
+		if((tail+1)%qsize==head) {
+			return false;
+		}
+		q[tail] = node;
+		tail=(tail+1)%qsize;
+
+	}
+	QueueNode* deq(){
+		if(size==0) return NULL;
+		else {
+			QueueNode* ret = head;
+			head = head->next;
+			return ret;
+		}
+	}
+	void PrintAll(){
+		QueueNode* cur = head;
+		while(cur!= NULL) {
+			cout << cur->action << " " << cur->num << endl;			
+			cur = cur->next;
+		}
+
+	}
+};
+
+
 
 // function prototypes
-
+/*
 void* do_work(void* tid)
 {
 	char action;
@@ -60,7 +114,7 @@ void* do_work(void* tid)
 	}
 
 
-}
+}*/
 
 
 
@@ -78,7 +132,17 @@ int main(int argc, char* argv[])
 
 	char *fn = argv[1];
 	num_threads = atoi(argv[2]);
+
+	FILE* fin;
 	fin = fopen(fn, "r");
+	Queue q;
+	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
+		QueueNode qn(action, num);
+		q.enq(qn);
+	}
+	q.PrintAll();
+
+	/*
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -104,7 +168,7 @@ int main(int argc, char* argv[])
 	cout << sum << " " << odd << endl;
 	cout << "Elapsed time: " << (stop.tv_sec - start.tv_sec) + ((double) (stop.tv_nsec - start.tv_nsec))/BILLION << " sec" << endl;
 	pthread_attr_destroy(&attr);
-	pthread_exit(NULL);
+	pthread_exit(NULL);*/
 	// clean up and return
 	return (EXIT_SUCCESS);
 
