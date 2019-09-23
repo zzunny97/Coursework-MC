@@ -17,7 +17,6 @@
 
 using namespace std;
 
-
 // aggregate variables
 long sum = 0;
 long odd = 0;
@@ -28,102 +27,82 @@ bool done = false;
 int num_threads;
 skiplist<int, int> list(0,1000000);
 
-pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t m1=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t m2=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t m3=PTHREAD_MUTEX_INITIALIZER;
 
-class QueueNode{
+typedef struct padded_int {
+	long local_odd;
+	long local_sum;
+	char padding[48];
+} private_cnt;
+
+
+class Node{
 public:
-	char action;
-	int num;
-	QueueNode* next;
-	QueueNode(char act, int n) {
-		action = act;
-		num = n;
-		next = NULL;
-	}
-	QueueNode& operator=(QueueNode& qn){
-		action = qn.action;
-		num = qn.num;
-		return *this;
-	}
+	char action;		//1
+	int num;				//4
+	Node* next;			//8
+	char padding[3];
+	Node(char act, int n);
 };
+
+Node::Node(char act, int n) {
+	action = act;
+	num = n;
+	padding[0]=0;
+	padding[1]=0;
+	padding[2]=0;
+	next = NULL;
+}
 
 class Queue{
 public:
-	QueueNode* q;
 	int size;
-	int head, tail;
-
-	Queue(int qsize){
-		//q = new QueueNode('0',0)[size];
-		q = (QueueNode*)malloc(sizeof(QueueNode)*qsize);
-		size = qsize;
-		head=tail=0;
-	}
-	~Queue(){
-		free(q);
-	}
-	bool Enq(QueueNode node){
-		// queue is full
-		if((tail+1)%size==head) {
-			return false;
-		}
-		q[tail] = node;
-		tail=(tail+1)%size;
-		return true;
-	}
-	QueueNode* Deq(){
-		//queue is empty
-		if(head==tail)
-			return NULL;
-		QueueNode* ret = &q[head];
-		head = (head+1) % size;
-		return ret;
-	}
-	void PrintAll(){
-		int cur = head;
-		
-		while(cur!=tail) {
-			cout << "cur = " << cur << " head = " << head << " tail = " << tail << " "  << q[cur].action << " " << q[cur].num << endl;			
-			cur++;
-		}
-
-	}
+	Node* front;
+	Node* rear;
+	
+	Queue();
+	void enq(char act, int n);
+	Node* deq();
+	void print();
 };
 
+Queue::Queue() {
+	size = 0;
+	front = NULL;
+	rear = NULL;
+}
 
-
-// function prototypes
-/*
-void* do_work(void* tid)
-{
-	char action;
-	long num;
-	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
-		pthread_mutex_lock(&mutex);
-		cout << "tid = " << *(int*)tid << " " << action << " " << num << endl;
-		pthread_mutex_unlock(&mutex);
-		if (action == 'i') {            // insert
-			list.insert(num,num);
-			// update aggregate variables
-			sum += num;
-			if (num % 2 == 1) {
-				odd++;
-			}
-		}else if (action == 'q') {      // qeury
-			if(list.find(num)!=num)
-				cout << "ERROR: Not Found: " << num << endl;
-		} else if (action == 'w') {     // wait
-			usleep(num*1000);
-		} else {
-			printf("ERROR: Unrecognized action: '%c'\n", action);
-			pthread_exit(0);
-		}
+void Queue::enq(char act, int n) {
+	Node* insert = new Node(act, n);
+	if(size==0) {
+		front = insert;
+		rear = insert;
+	} else{
+		rear->next = insert;	
+		rear = insert;
 	}
+	size++;
+}
 
+Node* Queue::deq() {
+	Node* ret = front;
+	front = front->next;
+	return ret;
+}
 
-}*/
+void Queue::print() {
+	Node* cur = front;
+	while(cur!=NULL) {
+		cout << cur->action << " " << cur->num << endl;
+		cur = cur->next;
+	}
+}
 
-
+void* do_work(void* tid);
+Queue q;
+int idx;
 
 int main(int argc, char* argv[])
 {
@@ -142,19 +121,14 @@ int main(int argc, char* argv[])
 
 	FILE* fin;
 	fin = fopen(fn, "r");
-	cout << "make queue" << endl;
-	Queue q(1000010);
-	cout << "enqueue start" << endl;
 	char action;
-	int num;
+	long num;
 	int line=0;
 	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
-		QueueNode qn(action, num);
-		q.Enq(qn);
+		q.enq(action, num);
 	}
-	//q.PrintAll();
 
-	/*
+	
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -171,18 +145,84 @@ int main(int argc, char* argv[])
 		pthread_join(thread[i], NULL);
 	}
 
-	// load numbers and add them to the queue
 	fclose(fin);
 	clock_gettime( CLOCK_REALTIME, &stop);
 
-	// print results
 	cout << list.printList() << endl;
 	cout << sum << " " << odd << endl;
 	cout << "Elapsed time: " << (stop.tv_sec - start.tv_sec) + ((double) (stop.tv_nsec - start.tv_nsec))/BILLION << " sec" << endl;
 	pthread_attr_destroy(&attr);
-	pthread_exit(NULL);*/
+	pthread_exit(NULL);
 	// clean up and return
 	return (EXIT_SUCCESS);
+
+}
+
+void* do_work(void* tid)
+{
+	struct timespec start, stop;
+	struct timespec tmp1, tmp2;
+	long i_overhead=0, q_overhead=0, w_overhead=0;
+	clock_gettime( CLOCK_REALTIME, &start);
+
+
+	char action;
+	long num;
+	private_cnt pcnt;
+	while (1) {
+		pthread_mutex_lock(&m1);
+		if(idx==q.size) {
+			pthread_mutex_unlock(&m1);
+			break;
+		}
+		Node* inst = q.deq();
+		idx++;
+		
+		pthread_mutex_unlock(&m1);
+		action = inst->action;
+		num = inst->num;
+		//cout << "TID: " << *(int*)tid << " " << action << " " << num << endl;
+		//pthread_mutex_unlock(&mutex);
+		//cout << *(int*)tid << " " << action << " " << num << endl;
+		if (action == 'i') {            // insert
+			clock_gettime(CLOCK_REALTIME, &tmp1);
+			pthread_mutex_lock(&m3);	
+			list.insert(num,num);
+			pthread_mutex_unlock(&m3);
+			// update aggregate variables
+			pcnt.local_sum += num;
+			if (num % 2 == 1) {
+				pcnt.local_odd++;
+			}
+			clock_gettime(CLOCK_REALTIME, &tmp2);
+			i_overhead += (tmp2.tv_sec - tmp1.tv_sec) + ((double) (tmp2.tv_nsec-tmp1.tv_nsec))/BILLION;
+		}else if (action == 'q') {      // qeury
+			clock_gettime(CLOCK_REALTIME, &tmp1);
+			if(list.find(num)!=num)
+				cout << "ERROR: Not Found: " << num << endl;
+			clock_gettime(CLOCK_REALTIME, &tmp2);
+			q_overhead += (tmp2.tv_sec - tmp1.tv_sec) + ((double) (tmp2.tv_nsec-tmp1.tv_nsec))/BILLION;
+		} else if (action == 'w') {     // wait
+			clock_gettime(CLOCK_REALTIME, &tmp1);
+			usleep(num*1000);
+			clock_gettime(CLOCK_REALTIME, &tmp2);
+			w_overhead += (tmp2.tv_sec - tmp1.tv_sec) + ((double) (tmp2.tv_nsec-tmp1.tv_nsec))/BILLION;
+		} else {
+			printf("ERROR: Unrecognized action: '%c'\n", action);
+			pthread_exit(0);
+		}
+	}
+
+	clock_gettime( CLOCK_REALTIME, &stop);
+	pthread_mutex_lock(&m2);
+	cout << "TID: " << *(int*)tid << " Elapsed time: " << (stop.tv_sec - start.tv_sec) + ((double) (stop.tv_nsec - start.tv_nsec))/BILLION << " sec" << endl;
+	cout << "i_overhead = " << i_overhead << endl;
+	cout << "q_overhead = " << q_overhead << endl;
+	cout << "w_overhead = " << w_overhead << endl;
+	
+	odd += pcnt.local_odd;
+	sum += pcnt.local_sum;
+	pthread_mutex_unlock(&m2);
 
 }
 
