@@ -160,9 +160,10 @@ int main(int argc, char* argv[])
 
 void* do_work(void* tid)
 {
+    cout << "func: do_work" << endl;
 	struct timespec start, stop;
 	struct timespec tmp1, tmp2;
-	long i_overhead=0, q_overhead=0, w_overhead=0;
+	double i_overhead=0, q_overhead=0, w_overhead=0;
 	clock_gettime( CLOCK_REALTIME, &start);
 
 
@@ -177,6 +178,7 @@ void* do_work(void* tid)
 		}
 		Node* inst = q.deq();
 		idx++;
+        if(idx % 10000 == 0) cout << idx << endl;
 		
 		pthread_mutex_unlock(&m1);
 		action = inst->action;
