@@ -1,0 +1,70 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+BILLION	skiplist2.h	4;"	d
+KeyType	skiplist2.h	/^		typedef K KeyType;$/;"	t	class:skiplist
+NPAIRS	skiplist2.h	5;"	d
+Node	skiplist.cpp	/^Node::Node(char act, int n) {$/;"	f	class:Node
+Node	skiplist.cpp	/^class Node{$/;"	c	file:
+NodeType	skiplist2.h	/^		typedef skiplist_node<K,V,MAXLEVEL> NodeType;$/;"	t	class:skiplist
+Queue	skiplist.cpp	/^Queue::Queue() {$/;"	f	class:Queue
+Queue	skiplist.cpp	/^class Queue{$/;"	c	file:
+ValueType	skiplist2.h	/^		typedef V ValueType;$/;"	t	class:skiplist
+action	skiplist.cpp	/^	char action;		\/\/1$/;"	m	class:Node	file:
+cnt	skiplist2.h	/^		int cnt;$/;"	m	class:skiplist_node
+deq	skiplist.cpp	/^Node* Queue::deq() {$/;"	f	class:Queue
+do_work	skiplist.cpp	/^void* do_work(void* tid)$/;"	f
+done	skiplist.cpp	/^bool done = false;$/;"	v
+empty	skiplist2.h	/^		bool empty() const$/;"	f	class:skiplist
+enq	skiplist.cpp	/^void Queue::enq(char act, int n) {$/;"	f	class:Queue
+erase	skiplist2.h	/^		void erase(K searchKey)$/;"	f	class:skiplist
+find	skiplist2.h	/^		V find(K searchKey)$/;"	f	class:skiplist
+forwards	skiplist2.h	/^		skiplist_node<K,V,MAXLEVEL>* forwards[MAXLEVEL+1];   \/\/ 8*17 = 156 bytes --> 128 + 28 bytes $/;"	m	class:skiplist_node
+front	skiplist.cpp	/^	Node* front;$/;"	m	class:Queue	file:
+idx	skiplist.cpp	/^int idx;$/;"	v
+insert	skiplist2.h	/^		void insert(K k, V v)$/;"	f	class:skiplist_node
+insert	skiplist2.h	/^		void insert(K searchKey,V newValue)$/;"	f	class:skiplist
+key	skiplist2.h	/^		K key[NPAIRS];   \/\/ 4*44   --> 176$/;"	m	class:skiplist_node
+local_odd	skiplist.cpp	/^	long local_odd;$/;"	m	struct:padded_int	file:
+local_sum	skiplist.cpp	/^	long local_sum;$/;"	m	struct:padded_int	file:
+m1	skiplist.cpp	/^pthread_mutex_t m1=PTHREAD_MUTEX_INITIALIZER;$/;"	v
+m2	skiplist.cpp	/^pthread_mutex_t m2=PTHREAD_MUTEX_INITIALIZER;$/;"	v
+m3	skiplist.cpp	/^pthread_mutex_t m3=PTHREAD_MUTEX_INITIALIZER;$/;"	v
+m_maxKey	skiplist2.h	/^		K m_maxKey;$/;"	m	class:skiplist
+m_minKey	skiplist2.h	/^		K m_minKey;$/;"	m	class:skiplist
+m_pHeader	skiplist2.h	/^		skiplist_node<K,V,MAXLEVEL>* m_pHeader;$/;"	m	class:skiplist
+m_pTail	skiplist2.h	/^		skiplist_node<K,V,MAXLEVEL>* m_pTail;$/;"	m	class:skiplist
+main	skiplist.cpp	/^int main(int argc, char* argv[])$/;"	f
+max	skiplist.cpp	/^long max = INT_MIN;$/;"	v
+max_curr_level	skiplist2.h	/^		int max_curr_level;$/;"	m	class:skiplist
+max_level	skiplist2.h	/^		const int max_level;$/;"	m	class:skiplist
+min	skiplist.cpp	/^long min = INT_MAX;$/;"	v
+next	skiplist.cpp	/^	Node* next;			\/\/8$/;"	m	class:Node	file:
+num	skiplist.cpp	/^	int num;				\/\/4$/;"	m	class:Node	file:
+num_threads	skiplist.cpp	/^int num_threads;$/;"	v
+odd	skiplist.cpp	/^long odd = 0;$/;"	v
+padded_int	skiplist.cpp	/^typedef struct padded_int {$/;"	s	file:
+padding	skiplist.cpp	/^	char padding[3];$/;"	m	class:Node	file:
+padding	skiplist.cpp	/^	char padding[48];$/;"	m	struct:padded_int	file:
+print	skiplist.cpp	/^void Queue::print() {$/;"	f	class:Queue
+printList	skiplist2.h	/^		std::string printList()$/;"	f	class:skiplist
+printNode	skiplist2.h	/^        void printNode() {$/;"	f	class:skiplist_node
+private_cnt	skiplist.cpp	/^} private_cnt;$/;"	t	typeref:struct:padded_int	file:
+q	skiplist.cpp	/^Queue q;$/;"	v
+randomLevel	skiplist2.h	/^		int randomLevel() {$/;"	f	class:skiplist
+rear	skiplist.cpp	/^	Node* rear;$/;"	m	class:Queue	file:
+size	skiplist.cpp	/^	int size;$/;"	m	class:Queue	file:
+skiplist	skiplist2.h	/^		skiplist(K minKey,K maxKey):m_pHeader(NULL),m_pTail(NULL),$/;"	f	class:skiplist
+skiplist	skiplist2.h	/^class skiplist$/;"	c
+skiplist_node	skiplist2.h	/^		skiplist_node()$/;"	f	class:skiplist_node
+skiplist_node	skiplist2.h	/^		skiplist_node(K searchKey)$/;"	f	class:skiplist_node
+skiplist_node	skiplist2.h	/^		skiplist_node(K searchKey,V val)$/;"	f	class:skiplist_node
+skiplist_node	skiplist2.h	/^class skiplist_node$/;"	c
+sum	skiplist.cpp	/^long sum = 0;$/;"	v
+uniformRandom	skiplist2.h	/^		double uniformRandom()$/;"	f	class:skiplist
+value	skiplist2.h	/^		V value[NPAIRS];   \/\/ 4*44   --> 176$/;"	m	class:skiplist_node
+~skiplist	skiplist2.h	/^		virtual ~skiplist()$/;"	f	class:skiplist
+~skiplist_node	skiplist2.h	/^		virtual ~skiplist_node()$/;"	f	class:skiplist_node

@@ -64,6 +64,12 @@ class skiplist_node
 			return;
 		}
 
+        void printNode() {
+            for(int i=0; i<cnt; i++) {
+                cout << key[i] << " " << value[i] << endl;
+            }
+        }
+
 		int cnt;
 		// change KV to array of structure later
 		K key[NPAIRS];   // 4*44   --> 176
@@ -109,14 +115,19 @@ class skiplist
 		{
 			skiplist_node<K,V,MAXLEVEL>* update[MAXLEVEL];
 			NodeType* currNode = m_pHeader;
+            //cout << "====step1====" << endl;
 			for(int level=max_curr_level; level >=1; level--) {
+                //cout << "level = " << level << endl;
 				while ( currNode->forwards[level]->key[0] <= searchKey ) {
-					currNode = currNode->forwards[level];
+                    cout << currNode->forwards[level]->key[0] << endl;
+                    //currNode->printNode();
+					currNode = currNode->forwards[level];   // shift to right
 				}
 				update[level] = currNode;
 			}
 
 			//currNode = currNode->forwards[1];
+            //cout << "====step2====" << endl;
 
 			if( currNode->cnt < NPAIRS){
 				//  insert
@@ -186,7 +197,7 @@ class skiplist
 			NodeType* currNode = m_pHeader;
 			for(int level=max_curr_level; level >=1; level--) {
 				while ( currNode->forwards[level]->key[0] <= searchKey ) {
-					currNode = currNode->forwards[level];
+					currNode = currNode->forwards[level]; // shift to right
 				}
 			}
 			// currNode = currNode->forwards[1];
