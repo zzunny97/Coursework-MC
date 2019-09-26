@@ -160,7 +160,6 @@ int main(int argc, char* argv[])
 
 void* do_work(void* tid)
 {
-    cout << "func: do_work" << endl;
 	struct timespec start, stop;
 	struct timespec tmp1, tmp2;
 	double i_overhead=0, q_overhead=0, w_overhead=0;
@@ -171,7 +170,7 @@ void* do_work(void* tid)
 	long num;
 	private_cnt pcnt;
 	while (1) {
-		pthread_mutex_lock(&m1);
+		pthread_mutex_lock(&m1);    // how about spinlock here??
 		if(idx==q.size) {
 			pthread_mutex_unlock(&m1);
 			break;
@@ -188,10 +187,7 @@ void* do_work(void* tid)
 		//cout << *(int*)tid << " " << action << " " << num << endl;
 		if (action == 'i') {            // insert
 			clock_gettime(CLOCK_REALTIME, &tmp1);
-			pthread_mutex_lock(&m3);	
 			list.insert(num,num);
-			pthread_mutex_unlock(&m3);
-			// update aggregate variables
 			pcnt.local_sum += num;
 			if (num % 2 == 1) {
 				pcnt.local_odd++;

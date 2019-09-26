@@ -1,9 +1,12 @@
 #include <iostream>
 #include <sstream>
+#include <pthread.h>
 
 #define BILLION  1000000000L
 
 using namespace std;
+
+
  
 template<class K,class V,int MAXLEVEL>
 class skiplist_node
@@ -41,6 +44,12 @@ public:
  
 ///////////////////////////////////////////////////////////////////////////////
  
+pthread_mutex_t mm1=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mm2=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mm3=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex[17];
+
+pthread_rwlock_t rwLock=PTHREAD_RWLOCK_INITIALIZER;
 template<class K, class V, int MAXLEVEL = 16>
 class skiplist
 {
@@ -58,41 +67,58 @@ public:
         for ( int i=1; i<=MAXLEVEL; i++ ) {
             m_pHeader->forwards[i] = m_pTail;
         }
+        for(int i=1; i<=MAXLEVEL; i++) {
+            pthread_mutex_init(&mutex[i], NULL); 
+        }
     }
  
     void insert(K searchKey,V newValue)
     {
         skiplist_node<K,V,MAXLEVEL>* update[MAXLEVEL];
         NodeType* currNode = m_pHeader;
+       
+        pthread_mutex_lock(&mm1);
+        int max_curr_level_local = max_curr_level;
+        pthread_mutex_unlock(&mm1);
 
-        // search
-        for(int level=max_curr_level; level >=1; level--) {
+        //pthread_rwlock_rdlock(&rwLock);
+        for(int level=max_curr_level_local; level >=1; level--) {
+            //pthread_mutex_lock(&mutex[level]);
             while ( currNode->forwards[level]->key < searchKey ) {
                 currNode = currNode->forwards[level];   // shift to right
             }
             update[level] = currNode;
+            //pthread_mutex_unlock(&mutex[level]);
         }
         currNode = currNode->forwards[1];   
+        //pthread_rwlock_unlock(&rwLock);
 
+        //pthread_rwlock_wrlock(&rwLock);
         if ( currNode->key == searchKey ) {
             currNode->value = newValue;
         }
         else {
             int newlevel = randomLevel();
-            if ( newlevel > max_curr_level ) {
-                for ( int level = max_curr_level+1; level <= newlevel; level++ ) {
+            if ( newlevel > max_curr_level_local ) {
+                for ( int level = max_curr_level_local+1; level <= newlevel; level++ ) {
                     update[level] = m_pHeader;
                 }
 
-                // lock
-                max_curr_level = newlevel;
+                max_curr_level_local = newlevel;
             }
             currNode = new NodeType(searchKey,newValue);
-            for ( int lv=1; lv<=max_curr_level; lv++ ) {
+            for ( int lv=1; lv<=max_curr_level_local; lv++ ) {
+                //pthread_mutex_lock(&mutex[lv]);
                 currNode->forwards[lv] = update[lv]->forwards[lv];
                 update[lv]->forwards[lv] = currNode;
+                //pthread_mutex_unlock(&mutex[lv]);
             }
         }
+
+        pthread_mutex_lock(&mm1);
+        max_curr_level = max_curr_level_local;
+        pthread_mutex_unlock(&mm1);
+        //pthread_rwlock_unlock(&rwLock);
     }
     virtual ~skiplist()
     {
@@ -189,11 +215,13 @@ protected:
         }
         return level;
     }
-    K m_minKey;
-    K m_maxKey;
-    int max_curr_level;
-    skiplist_node<K,V,MAXLEVEL>* m_pHeader;
-    skiplist_node<K,V,MAXLEVEL>* m_pTail;
+    K m_minKey; //4
+    K m_maxKey; //4
+    int max_curr_level; //4
+    skiplist_node<K,V,MAXLEVEL>* m_pHeader; //8
+    skiplist_node<K,V,MAXLEVEL>* m_pTail;   //8
+    char padding[36];                       //36
+    // 12+16+36 = 64
 };
  
 ///////////////////////////////////////////////////////////////////////////////
