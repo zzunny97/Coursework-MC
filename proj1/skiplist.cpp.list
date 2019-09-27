@@ -131,11 +131,9 @@ int main(int argc, char* argv[])
 	char action;
 	long num;
 	int line=0;
-    cout << "enq start" << endl;
 	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
 		q.enq(action, num);
 	}
-    cout << "enq end" << endl;
 
 	
 	pthread_attr_t attr;

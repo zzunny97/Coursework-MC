@@ -14,7 +14,7 @@
 #include <iostream>
 #include "skiplist2.h"
 
-#define SIZE 8 
+#define SIZE 64
 using namespace std;
 
 // aggregate variables
@@ -49,10 +49,19 @@ class Node{
 public:
 	char action;		//1
 	int num;				//4
-	Node* next;			//8
 	char padding[3];
+    Node();
 	Node(char act, int n);
 };
+
+Node::Node() {
+    action = '0';
+    num = -1;
+	padding[0]=0;
+	padding[1]=0;
+	padding[2]=0;
+
+}
 
 Node::Node(char act, int n) {
 	action = act;
@@ -60,56 +69,63 @@ Node::Node(char act, int n) {
 	padding[0]=0;
 	padding[1]=0;
 	padding[2]=0;
-	next = NULL;
 }
 
 class Queue{
 public:
-	int size;
-	Node* front;
-	Node* rear;
-	
-	Queue();
+    Node buffer[SIZE];	
+    int size;
+
+	Queue() {
+        for(int i=0; i<SIZE; i++) {
+            buffer[i].action = '0';
+            buffer[i].num = -1;
+        }
+        size=0;
+    }
 	void enq(char act, int n);
-	Node* deq();
-	void print();
+	Node deq();
+	//void print();
 };
 
-Queue::Queue() {
-	size = 0;
-	front = NULL;
-	rear = NULL;
-}
 
 void Queue::enq(char act, int n) {
-	Node* insert = new Node(act, n);
-	if(size==0) {
-		front = insert;
-		rear = insert;
-	} else{
-		rear->next = insert;	
-		rear = insert;
-	}
-	size++;
+    pthread_mutex_lock(&lock);
+    while((put>get&&(put-get)==SIZE-1) || (put<get&&(put+get)==SIZE-1)) {
+        pthread_cond_wait(&nonfull, &lock);
+    }
+    buffer[put].action = act;
+    buffer[put].num = n;
+    pthread_cond_signal(&nonempty);
+    pthread_mutex_unlock(&lock);
+    size++;
 }
 
-Node* Queue::deq() {
-	Node* ret = front;
-	front = front->next;
+Node Queue::deq() {
+    pthread_mutex_lock(&lock);
+    while(put==get) pthread_cond_wait(&nonempty, &lock);
+    Node ret(buffer[get].action, buffer[get].num);
+    get = (get+1)%SIZE;
+    pthread_cond_signal(&nonfull);
+    pthread_mutex_unlock(&lock);
+    size--;
 	return ret;
 }
 
+/*
 void Queue::print() {
 	Node* cur = front;
 	while(cur!=NULL) {
 		cout << cur->action << " " << cur->num << endl;
 		cur = cur->next;
 	}
-}
+}*/
 
+void* read_file(void* tid);
 void* do_work(void* tid);
 Queue q;
 int idx;
+char* fn;
 
 int main(int argc, char* argv[])
 {
@@ -123,19 +139,9 @@ int main(int argc, char* argv[])
 	}
 	clock_gettime( CLOCK_REALTIME, &start);
 
-	char *fn = argv[1];
+	fn = argv[1];
 	num_threads = atoi(argv[2]);
 
-	FILE* fin;
-	fin = fopen(fn, "r");
-	char action;
-	long num;
-	int line=0;
-    cout << "enq start" << endl;
-	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
-		q.enq(action, num);
-	}
-    cout << "enq end" << endl;
 
 	
 	pthread_attr_t attr;
@@ -147,14 +153,17 @@ int main(int argc, char* argv[])
 
 	for(int i=0; i<num_threads; i++) {
 		tid[i] = i;
-		pthread_create(&thread[i], NULL, do_work, (void*)&tid[i]);
+        if(i==0)
+		    pthread_create(&thread[i], NULL, read_file, (void*)&tid[i]);
+        else
+		    pthread_create(&thread[i], NULL, do_work, (void*)&tid[i]);
 	}
+    
 
 	for(int i=0; i<num_threads; i++) {
 		pthread_join(thread[i], NULL);
 	}
 
-	fclose(fin);
 	clock_gettime( CLOCK_REALTIME, &stop);
 
 	cout << list.printList() << endl;
@@ -167,9 +176,26 @@ int main(int argc, char* argv[])
 
 }
 
+void* read_file(void* tid)
+{
+    cout << "start read" << endl;
+	FILE* fin;
+	fin = fopen(fn, "r");
+	char action;
+	long num;
+	int line=0;
+	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
+		q.enq(action, num);
+	}
+	fclose(fin);
+    cout << "end read" << endl;
+    
+}
+
 void* do_work(void* tid)
 {
-	struct timespec start, stop;
+    cout << "func: do_work: " << q.size << endl;
+    struct timespec start, stop;
 	struct timespec tmp1, tmp2;
 	double i_overhead=0, q_overhead=0, w_overhead=0;
 	clock_gettime( CLOCK_REALTIME, &start);
@@ -184,13 +210,13 @@ void* do_work(void* tid)
 			pthread_mutex_unlock(&m1);
 			break;
 		}
-		Node* inst = q.deq();
+		Node inst = q.deq();
 		idx++;
         if(idx % 10000 == 0) cout << idx << endl;
 		
 		pthread_mutex_unlock(&m1);
-		action = inst->action;
-		num = inst->num;
+		action = inst.action;
+		num = inst.num;
 		//cout << "TID: " << *(int*)tid << " " << action << " " << num << endl;
 		//pthread_mutex_unlock(&mutex);
 		//cout << *(int*)tid << " " << action << " " << num << endl;

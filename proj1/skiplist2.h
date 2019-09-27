@@ -63,13 +63,13 @@ class skiplist_node
 
 		void insert(K k, V v)
 		{
-            pthread_mutex_lock(&m);
+            //pthread_mutex_lock(&m);
 			for(int i=0;i<cnt;i++){
 				if( key[i] < k) 
 					continue;
-
 				// shift to right
 				for(int j=cnt-1;j>=i;j--){
+                    
 					key[j+1] = key[j] ;
 					value[j+1] = value[j] ;
 				}
@@ -77,13 +77,13 @@ class skiplist_node
 				key[i] = k;
 				value[i] = v;
 				cnt++;
-                pthread_mutex_unlock(&m);
+                //pthread_mutex_unlock(&m);
 				return;
 			}
 			key[cnt] = k;
 			value[cnt] = v;
 			cnt++;
-            pthread_mutex_unlock(&m);
+            //pthread_mutex_unlock(&m);
 			return;
 		}
         int getCnt() {
@@ -167,47 +167,76 @@ class skiplist
 
 		void insert(K searchKey,V newValue)
 		{
+            //cout << "insert" << endl;
 			skiplist_node<K,V,MAXLEVEL>* update[MAXLEVEL];
 			NodeType* currNode = m_pHeader;
             pthread_mutex_lock(&mm1);
             int tmp = getMaxLevel(); 
             pthread_mutex_unlock(&mm1);
+            //cout << "m_pHeader: " << m_pHeader << endl;
 			for(int level=tmp; level >=1; level--) {
-                //cout << "level = " << level << endl;
+                //pthread_mutex_lock(&mutex[level]);
 				while ( currNode->forwards[level]->key[0] <= searchKey ) {
+                    //pthread_mutex_lock(&currNode->m);
 					currNode = currNode->forwards[level];   // shift to right
+                    //pthread_mutex_unlock(&currNode->m);
 				}
+                pthread_mutex_lock(&currNode->m);
 				update[level] = currNode;
-			}
-    
+                pthread_mutex_unlock(&currNode->m);
 
-			if( currNode->getCnt() < NPAIRS){
+                //pthread_mutex_lock(&mutex[level]);
+			}
+            pthread_mutex_lock(&currNode->m);
+			if( currNode->cnt < NPAIRS){
 				currNode->insert(searchKey, newValue);
 			}
 			else { // split
                 pthread_mutex_lock(&mm1);
 				int newlevel = randomLevel();
-				if ( newlevel > getMaxLevel()) {
-					for ( int level = getMaxLevel()+1; level <= newlevel; level++ ) {
+				if ( newlevel > tmp){
+					for ( int level = tmp+1; level <= newlevel; level++ ) {
+                        pthread_mutex_lock(&mutex[level]);      // add
 						update[level] = m_pHeader;
+                        pthread_mutex_unlock(&mutex[level]);    // add 
 					}
-                    max_curr_level.store(newlevel, std::memory_order_relaxed);
+
+                    setMaxLevel(newlevel);
 
 				}
 				NodeType* newNode = new NodeType();
-				int mid=currNode->getCnt()/2; 
-				for (int i=mid; i<currNode->getCnt(); i++){
-					newNode->insert(currNode->key[i], currNode->value[i]);
+                int ccnt=currNode->cnt;
+				int mid=ccnt /2; 
+				for (int i=mid; i<ccnt; i++){
+					newNode->insert(currNode->key[i], currNode->value[i]);//여기 바꾸기
 				}
-                // setCnt
-                currNode->setCnt(mid);
-				//currNode->cnt = mid;
-				if(newNode->getKey(0) < searchKey){
+                currNode->cnt = mid;
+				if(newNode->key[0] < searchKey){
 					newNode->insert(searchKey, newValue);
 				}
 				else{
 					currNode->insert(searchKey, newValue);
-				}
+                }
+                skiplist_node<K,V,MAXLEVEL>* update2[MAXLEVEL];
+                NodeType* currNode2 = m_pHeader;
+                for(int level=tmp; level >=1; level--) {
+                    //pthread_mutex_lock(&mutex[level]);
+                    while ( currNode2->forwards[level]->key[0] <= searchKey ) {
+                        //pthread_mutex_lock(&currNode->m);
+                        currNode2 = currNode2->forwards[level];   // shift to right
+                        //pthread_mutex_unlock(&currNode->m);
+                    }
+                    update2[level] = currNode2;
+
+                    //pthread_mutex_lock(&mutex[level]);
+                }
+
+                for(int level=tmp; level>=1; level--) {
+                    if(update[level] != update2[level]){
+                        cout << "DIFFERENT UPDATE VALLUE******* " << endl;
+                        update[level] = update2[level];
+                    }
+                }
 				for ( int lv=1; lv<=tmp; lv++ ) {
                     pthread_mutex_lock(&mutex[lv]);
 					newNode->forwards[lv] = update[lv]->forwards[lv];
@@ -216,6 +245,7 @@ class skiplist
 				}
                 pthread_mutex_unlock(&mm1);
 			}
+            pthread_mutex_unlock(&currNode->m);
 
 		}
 
@@ -251,18 +281,20 @@ class skiplist
 		V find(K searchKey)
 		{
 			NodeType* currNode = m_pHeader;
-			for(int level=max_curr_level; level >=1; level--) {
-                pthread_mutex_lock(&mutex[level]);
+            //pthread_mutex_lock(&mm1);
+            int tmp = getMaxLevel();
+            //pthread_mutex_unlock(&mm1);
+			for(int level=tmp; level >=1; level--) {
+                //pthread_mutex_lock(&mutex[level]);
 				while ( currNode->forwards[level]->key[0] <= searchKey ) {
 					currNode = currNode->forwards[level]; // shift to right
 				}
-                pthread_mutex_unlock(&mutex[level]);
+                //pthread_mutex_unlock(&mutex[level]);
 			}
 			// currNode = currNode->forwards[1];
-
-			for(int i=0;i<currNode->getCnt();i++){
-				if ( currNode->getKey(i) == searchKey ) {
-					return currNode->getValue(i);
+			for(int i=0;i<currNode->cnt;i++){
+				if ( currNode->key[i] == searchKey ) {
+					return currNode->value[i];
 				}
 			}
 
@@ -291,9 +323,14 @@ class skiplist
 			NodeType* currNode = m_pHeader; //->forwards[1];
 			while ( currNode != m_pTail ) {
 				for(int i=0;i<currNode->cnt&&p<=200;i++,p++){
-					if(currNode == m_pHeader && i ==0) i++;
+					if(currNode == m_pHeader && i ==0){
+                        //sstr << "m_pHeader skip\n";
+                        i++;
+                    }
 					sstr << currNode->key[i] << " ";
 				}
+                //sstr << "\n";
+                
 				currNode = currNode->forwards[1];
 				if(p>200) break;
 			}
