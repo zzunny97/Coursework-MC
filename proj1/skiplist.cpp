@@ -131,11 +131,11 @@ int main(int argc, char* argv[])
 	char action;
 	long num;
 	int line=0;
-    cout << "enq start" << endl;
+    //cout << "enq start" << endl;
 	while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
 		q.enq(action, num);
 	}
-    cout << "enq end" << endl;
+    //cout << "enq end" << endl;
 
 	
 	pthread_attr_t attr;
@@ -178,6 +178,8 @@ void* do_work(void* tid)
 	char action;
 	long num;
 	private_cnt pcnt;
+	pcnt.local_sum = 0;	
+	pcnt.local_odd = 0;
 	while (1) {
 		pthread_mutex_lock(&m1);    // how about spinlock here??
 		if(idx==q.size) {
@@ -222,10 +224,10 @@ void* do_work(void* tid)
 
 	clock_gettime( CLOCK_REALTIME, &stop);
 	pthread_mutex_lock(&m2);
-	cout << "TID: " << *(int*)tid << " Elapsed time: " << (stop.tv_sec - start.tv_sec) + ((double) (stop.tv_nsec - start.tv_nsec))/BILLION << " sec" << endl;
-	cout << "i_overhead = " << i_overhead << endl;
-	cout << "q_overhead = " << q_overhead << endl;
-	cout << "w_overhead = " << w_overhead << endl;
+	//cout << "TID: " << *(int*)tid << "local_odd = " << pcnt.local_odd << " local_sum = " << pcnt.local_sum << " Elapsed time: " << (stop.tv_sec - start.tv_sec) + ((double) (stop.tv_nsec - start.tv_nsec))/BILLION << " sec" << endl;
+	//cout << "i_overhead = " << i_overhead << endl;
+	//cout << "q_overhead = " << q_overhead << endl;
+	//cout << "w_overhead = " << w_overhead << endl;
 	
 	odd += pcnt.local_odd;
 	sum += pcnt.local_sum;

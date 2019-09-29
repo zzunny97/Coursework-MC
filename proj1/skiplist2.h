@@ -1,7 +1,6 @@
 #include <iostream>
 #include <sstream>
 #include <pthread.h>
-#include <atomic>
 
 #define BILLION  1000000000L
 #define NPAIRS  43
@@ -303,11 +302,18 @@ class skiplist
 		}
         
         int getMaxLevel(){
-            return max_curr_level.load(memory_order_relaxed);
+			pthread_mutex_lock(&mm2);	
+			int ret = max_curr_level;
+			pthread_mutex_unlock(&mm2);
+			return ret;
+            //return max_curr_level.load(memory_order_relaxed);
         }
 
         void setMaxLevel(int maxlevel) {
-           max_curr_level.store(maxlevel, memory_order_relaxed); 
+			pthread_mutex_lock(&mm2);
+			max_curr_level = maxlevel;
+			pthread_mutex_unlock(&mm2);
+            //max_curr_level.store(maxlevel, memory_order_relaxed); 
         }
         
 
@@ -355,7 +361,8 @@ class skiplist
 		}
 		K m_minKey;     //4
 		K m_maxKey;     //4
-		atomic<int> max_curr_level; //4
+		//atomic<int> max_curr_level; //4
+		int max_curr_level; //4
 		skiplist_node<K,V,MAXLEVEL>* m_pHeader; //8
 		skiplist_node<K,V,MAXLEVEL>* m_pTail;   //8
         char padding[36];                       //36
