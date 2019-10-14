@@ -7,7 +7,7 @@
 #include "sys/time.h"
 
 #define PIE 3.1415926
-#define NUM_THREADS 40
+#define NUM_THREADS 10
 
 int main(int argc, char **argv)
 {
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
 
 
     printf("nshot = %f\n", nshot); 
-//#pragma omp parallel for private(ncx_shot, ncy_shot)
+
     for(ishot=1;ishot<=(int)nshot;ishot++)
     {
         printf("shot=%d\n",ishot);
@@ -408,7 +408,7 @@ int main(int argc, char **argv)
                         ws[k*ny*nx+j*nx+i]=2.*ws1[k*ny*nx+j*nx+i]-ws2[k*ny*nx+j*nx+i]+tempwx2+tempwy2
                             -tempuxz*vvs2*dtz*dtx-tempvyz*vvs2*dtz*dtx;
                     }//for(i=nleft;i<nright;i++) end        // until this part is main
-            #pragma omp parallel for
+            #pragma omp parallel for 
             for(k=ntop;k<nbottom;k++)
                 for(j=nfront;j<nback;j++)
                     for(i=nleft;i<nright;i++)
