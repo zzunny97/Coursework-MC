@@ -7,7 +7,6 @@
 #include "sys/time.h"
 
 #define PIE 3.1415926
-#define NUM_THREADS 10
 
 int main(int argc, char **argv)
 {
@@ -145,12 +144,10 @@ int main(int argc, char **argv)
     wave = (float*)malloc(sizeof(float)*lt);
 
 
-    omp_set_num_threads(NUM_THREADS);
 
-    printf("# of THREADS = %d\n", NUM_THREADS);
-    printf("nxshot = %d\tnyshot - %d\n", nxshot, nyshot);
+    //printf("nxshot = %d\tnyshot - %d\n", nxshot, nyshot);
     nshot=nxshot*nyshot;
-    printf("nshot = %f\n", nshot);
+    //printf("nshot = %f\n", nshot);
     t0=1.0/frequency;
 
     for(i=0;i<nz;i++)
