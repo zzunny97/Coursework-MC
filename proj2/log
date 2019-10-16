@@ -1,17 +1,17 @@
 ------------start time------------
-Thu Oct  3 18:57:46 KST 2019
+Wed Oct 16 10:15:20 EDT 2019
 
 --------workload parameter--------
-nx=700
-ny=700
-nz=150
+nx=560
+ny=560
+nz=320
 lt=100
 nedge=50
-ncx_shot1=350
-ncy_shot1=350
-ncz_shot=18
+ncx_shot1=280
+ncy_shot1=280
+ncz_shot=150
 nxshot=2
-nyshot=3
+nyshot=2
 frequency=20.000000
 velmax=3500.000000
 dt=0.001000
@@ -23,10 +23,8 @@ shot=1
 shot=2
 shot=3
 shot=4
-shot=5
-shot=6
 
-run time:	66.463280 s
+run time:	13.239123 s
 
 ------------end time------------
-Thu Oct  3 18:58:53 KST 2019
+Wed Oct 16 10:15:33 EDT 2019
