@@ -1,6 +1,6 @@
 CC=g++
 
-FFLAGS= -O3 -g -lm -fopenmp -w
+FFLAGS= -O3 -g -fopenmp -w
 
 all: 3dew.cpp
 	$(CC) $(FFLAGS) 3dew.cpp -o 3dew
