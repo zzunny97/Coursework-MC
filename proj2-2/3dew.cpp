@@ -229,15 +229,64 @@ int main(int argc, char **argv)
 
 
     printf("nshot = %f\n", nshot); 
+	int ttmp = nz*ny*nx*sizeof(float);
 
-    for(ishot=1;ishot<=(int)nshot;ishot++)
-    {
-        printf("shot=%d\n",ishot);
-        flog = fopen(logfile,"a");
-        fprintf(flog,"shot=%d\n",ishot);
-        fclose(flog);
-        ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
-        ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
+		memset(u, 0, ttmp);
+		memset(v, 0, ttmp);
+		memset(w, 0, ttmp);
+		memset(up, 0, ttmp);
+		memset(up1, 0, ttmp);
+		memset(up2, 0, ttmp);
+		memset(vp, 0, ttmp);
+		memset(vp1, 0, ttmp);
+		memset(vp2, 0, ttmp);
+		memset(wp, 0, ttmp);
+		memset(wp1, 0, ttmp);
+		memset(wp2, 0, ttmp);
+		memset(us, 0, ttmp);
+		memset(us1, 0, ttmp);
+		memset(us2, 0, ttmp);
+		memset(vs, 0, ttmp);
+		memset(vs1, 0, ttmp);
+		memset(vs2, 0, ttmp);
+		memset(ws, 0, ttmp);
+		memset(ws1, 0, ttmp);
+		memset(ws2, 0, ttmp);
+
+
+	for(ishot=1;ishot<=(int)nshot;ishot++)
+	{
+		printf("shot=%d\n",ishot);
+		flog = fopen(logfile,"a");
+		fprintf(flog,"shot=%d\n",ishot);
+		fclose(flog);
+		ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
+		ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
+    gettimeofday(&end,NULL);
+    all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
+    printf("run time:\t%f s\n",all_time);
+		memset(u, 0, ttmp);
+		memset(v, 0, ttmp);
+		memset(w, 0, ttmp);
+		memset(up, 0, ttmp);
+		memset(up1, 0, ttmp);
+		memset(up2, 0, ttmp);
+		memset(vp, 0, ttmp);
+		memset(vp1, 0, ttmp);
+		memset(vp2, 0, ttmp);
+		memset(wp, 0, ttmp);
+		memset(wp1, 0, ttmp);
+		memset(wp2, 0, ttmp);
+		memset(us, 0, ttmp);
+		memset(us1, 0, ttmp);
+		memset(us2, 0, ttmp);
+		memset(vs, 0, ttmp);
+		memset(vs1, 0, ttmp);
+		memset(vs2, 0, ttmp);
+		memset(ws, 0, ttmp);
+		memset(ws1, 0, ttmp);
+		memset(ws2, 0, ttmp);
+		/*				
         #pragma omp parallel for
         for(i=0;i<nz;i++)
             for(j=0;j<ny;j++)
@@ -265,7 +314,11 @@ int main(int argc, char **argv)
                     ws1[i*ny*nx+j*nx+k]=0.0f;
                     ws2[i*ny*nx+j*nx+k]=0.0f;
                 }//for(k=0;k<nx;k++) end
-
+				*/
+    gettimeofday(&end,NULL);
+    all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
+    printf("run time:\t%f s\n",all_time);
+		
         for(l=1;l<=lt;l++)
         {
             xmax=l*dt*velmax;
@@ -281,11 +334,14 @@ int main(int argc, char **argv)
             if(nback>ny-5) nback=ny-5;
             if(ntop<5) ntop=5;
             if(nbottom>nz-5) nbottom=nz-5;
-
+			
+			float wwave = wave[l-1];
             ntop = ntop-1;
             nfront = nfront-1;
             nleft = nleft-1;
-            #pragma omp parallel for ordered private(tempux2, tempuy2, tempuz2, tempvx2, tempvy2, tempvz2, tempwx2, tempwy2, tempwz2, px , vvp2, vvs2) reduction(+: tempuxz, tempuxy, tempvyz, tempvxy, tempwxz, tempwyz)
+            #pragma omp parallel
+			{
+			#pragma omp for private(tempux2, tempuy2, tempuz2, tempvx2, tempvy2, tempvz2, tempwx2, tempwy2, tempwz2, px, sx, vvp2, vvs2, tempuxz, tempuxy, tempvyz, tempvxy, tempwxz, tempwyz)
             for(k=ntop;k<nbottom;k++)
                 for(j=nfront;j<nback;j++)
                     for(i=nleft;i<nright;i++)
@@ -293,20 +349,26 @@ int main(int argc, char **argv)
                         if(i==ncx_shot-1&&j==ncy_shot-1&&k==ncz_shot-1)
                         {
                             px=1.;
-                            sx=0.;
+                            //sx=0.;
                         }
                         else
                         {
                             px=0.;
-                            sx=0.;
+                            //sx=0.;
                         }
-                        vvp2=vpp[k*ny*nx+j*nx+i]*vpp[k*ny*nx+j*nx+i];   // vvp2 = vpp[]^2
-                        drd1=dr1*vvp2;
-                        drd2=dr2*vvp2;
+						long abcd = k*ny*nx+j*nx+i;
+						float vppp = vpp[abcd];	
+						float vsss = vss[abcd];	
 
-                        vvs2=vss[k*ny*nx+j*nx+i]*vss[k*ny*nx+j*nx+i];   // vvs2 = vvs[]^2
-                        drd1=dr1*vvs2;
-                        drd2=dr2*vvs2;
+						vvp2 = vppp*vppp; 
+                        //vvp2=vpp[k*ny*nx+j*nx+i]*vpp[k*ny*nx+j*nx+i];   // vvp2 = vpp[]^2
+                        //drd1=dr1*vvp2;
+                        //drd2=dr2*vvp2;
+						
+						vvs2 = vsss*vsss;
+                        //vvs2=vss[k*ny*nx+j*nx+i]*vss[k*ny*nx+j*nx+i];   // vvs2 = vvs[]^2
+                        //drd1=dr1*vvs2;
+                        //drd2=dr2*vvs2;
 
                         tempux2=0.0f;
                         tempuy2=0.0f;
@@ -325,6 +387,19 @@ int main(int argc, char **argv)
                         tempwyz=0.0f;
                         for(kk=1;kk<=mm;kk++)
                         {
+							float cc=c[kk-1][0];
+                            tempux2=tempux2+cc*(u[k*ny*nx+j*nx+(i+kk)]+u[k*ny*nx+j*nx+(i-kk)]);
+                            tempuy2=tempuy2+cc*(u[k*ny*nx+(j+kk)*nx+i]+u[k*ny*nx+(j-kk)*nx+i]);
+                            tempuz2=tempuz2+cc*(u[(k+kk)*ny*nx+j*nx+i]+u[(k-kk)*ny*nx+j*nx+i]);
+
+                            tempvx2=tempvx2+cc*(v[k*ny*nx+j*nx+(i+kk)]+v[k*ny*nx+j*nx+(i-kk)]);
+                            tempvy2=tempvy2+cc*(v[k*ny*nx+(j+kk)*nx+i]+v[k*ny*nx+(j-kk)*nx+i]);
+                            tempvz2=tempvz2+cc*(v[(k+kk)*ny*nx+j*nx+i]+v[(k-kk)*ny*nx+j*nx+i]);
+
+                            tempwx2=tempwx2+cc*(w[k*ny*nx+j*nx+(i+kk)]+w[k*ny*nx+j*nx+(i-kk)]);
+                            tempwy2=tempwy2+cc*(w[k*ny*nx+(j+kk)*nx+i]+w[k*ny*nx+(j-kk)*nx+i]);
+                            tempwz2=tempwz2+cc*(w[(k+kk)*ny*nx+j*nx+i]+w[(k-kk)*ny*nx+j*nx+i]);
+							/*
                             tempux2=tempux2+c[kk-1][0]*(u[k*ny*nx+j*nx+(i+kk)]+u[k*ny*nx+j*nx+(i-kk)]);
                             tempuy2=tempuy2+c[kk-1][0]*(u[k*ny*nx+(j+kk)*nx+i]+u[k*ny*nx+(j-kk)*nx+i]);
                             tempuz2=tempuz2+c[kk-1][0]*(u[(k+kk)*ny*nx+j*nx+i]+u[(k-kk)*ny*nx+j*nx+i]);
@@ -336,25 +411,57 @@ int main(int argc, char **argv)
                             tempwx2=tempwx2+c[kk-1][0]*(w[k*ny*nx+j*nx+(i+kk)]+w[k*ny*nx+j*nx+(i-kk)]);
                             tempwy2=tempwy2+c[kk-1][0]*(w[k*ny*nx+(j+kk)*nx+i]+w[k*ny*nx+(j-kk)*nx+i]);
                             tempwz2=tempwz2+c[kk-1][0]*(w[(k+kk)*ny*nx+j*nx+i]+w[(k-kk)*ny*nx+j*nx+i]);
+							*/
 
                         } //for(kk=1;kk<=mm;kk++) end
+						//int abcd = k*ny*nx+j*nx+i;
+						float uuu = u[abcd];
+						float vvv = v[abcd];
+						float www = w[abcd];
+                        tempux2=(tempux2+c0*uuu)*vvp2*dtx*dtx;
+                        tempuy2=(tempuy2+c0*uuu)*vvs2*dtx*dtx;
+                        tempuz2=(tempuz2+c0*uuu)*vvs2*dtz*dtz;
 
-                        tempux2=(tempux2+c0*u[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
-                        tempuy2=(tempuy2+c0*u[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
-                        tempuz2=(tempuz2+c0*u[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
+                        tempvx2=(tempvx2+c0*vvv)*vvs2*dtx*dtx;
+                        tempvy2=(tempvy2+c0*vvv)*vvp2*dtx*dtx;
+                        tempvz2=(tempvz2+c0*vvv)*vvs2*dtz*dtz;
 
-                        tempvx2=(tempvx2+c0*v[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
-                        tempvy2=(tempvy2+c0*v[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
-                        tempvz2=(tempvz2+c0*v[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
-
-                        tempwx2=(tempwx2+c0*w[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
-                        tempwy2=(tempwy2+c0*w[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
-                        tempwz2=(tempwz2+c0*w[k*ny*nx+j*nx+i])*vvp2*dtz*dtz;
+                        tempwx2=(tempwx2+c0*www)*vvs2*dtx*dtx;
+                        tempwy2=(tempwy2+c0*www)*vvs2*dtx*dtx;
+                        tempwz2=(tempwz2+c0*www)*vvp2*dtz*dtz;
 
                         for(kk=1;kk<=mm;kk++)
                         {
                             for(kkk=1;kkk<=mm;kkk++)
                             {
+								float ccc = c[kkk-1][1+kk];
+                                tempuxz=tempuxz+ccc*(u[(k+kkk)*ny*nx+j*nx+(i+kk)]
+                                        -u[(k-kkk)*ny*nx+j*nx+(i+kk)]
+                                        +u[(k-kkk)*ny*nx+j*nx+(i-kk)]
+                                        -u[(k+kkk)*ny*nx+j*nx+(i-kk)]);
+                                tempuxy=tempuxy+ccc*(u[k*ny*nx+(j+kkk)*nx+(i+kk)]
+                                        -u[k*ny*nx+(j-kkk)*nx+(i+kk)]
+                                        +u[k*ny*nx+(j-kkk)*nx+(i-kk)]
+                                        -u[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+
+                                tempvyz=tempvyz+ccc*(v[(k+kkk)*ny*nx+(j+kk)*nx+i]
+                                        -v[(k-kkk)*ny*nx+(j+kk)*nx+i]
+                                        +v[(k-kkk)*ny*nx+(j-kk)*nx+i]
+                                        -v[(k+kkk)*ny*nx+(j-kk)*nx+i]);
+                                tempvxy=tempvxy+ccc*(v[k*ny*nx+(j+kkk)*nx+(i+kk)]
+                                        -v[k*ny*nx+(j-kkk)*nx+(i+kk)]
+                                        +v[k*ny*nx+(j-kkk)*nx+(i-kk)]
+                                        -v[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+
+                                tempwyz=tempwyz+ccc*(w[(k+kkk)*ny*nx+(j+kk)*nx+i]
+                                        -w[(k-kkk)*ny*nx+(j+kk)*nx+i]
+                                        +w[(k-kkk)*ny*nx+(j-kk)*nx+i]
+                                        -w[(k+kkk)*ny*nx+(j-kk)*nx+i]);
+                                tempwxz=tempwxz+ccc*(w[(k+kkk)*ny*nx+j*nx+(i+kk)]
+                                        -w[(k-kkk)*ny*nx+j*nx+(i+kk)]
+                                        +w[(k-kkk)*ny*nx+j*nx+(i-kk)]
+                                        -w[(k+kkk)*ny*nx+j*nx+(i-kk)]);
+								/*
                                 tempuxz=tempuxz+c[kkk-1][1+kk]*(u[(k+kkk)*ny*nx+j*nx+(i+kk)]
                                         -u[(k-kkk)*ny*nx+j*nx+(i+kk)]
                                         +u[(k-kkk)*ny*nx+j*nx+(i-kk)]
@@ -381,6 +488,7 @@ int main(int argc, char **argv)
                                         -w[(k-kkk)*ny*nx+j*nx+(i+kk)]
                                         +w[(k-kkk)*ny*nx+j*nx+(i-kk)]
                                         -w[(k+kkk)*ny*nx+j*nx+(i-kk)]);
+										*/
                             } // for(kkk=1;kkk<=mm;kkk++) end
                         } //for(kk=1;kk<=mm;kk++) end
 
@@ -388,55 +496,63 @@ int main(int argc, char **argv)
                         // no dependency: temp*, vvp2, vvs2, dtz, dtx, 
                         // dependency: up(1,2), vp(1,2), 
                         //
-                        up[k*ny*nx+j*nx+i]=2.*up1[k*ny*nx+j*nx+i]-up2[k*ny*nx+j*nx+i]
+                        up[abcd]=2.*up1[abcd]-up2[abcd]
                             +tempux2+tempwxz*vvp2*dtz*dtx
                             +tempvxy*vvp2*dtz*dtx;
-                        vp[k*ny*nx+j*nx+i]=2.*vp1[k*ny*nx+j*nx+i]-vp2[k*ny*nx+j*nx+i]
+                        vp[abcd]=2.*vp1[abcd]-vp2[abcd]
                             +tempvy2+tempuxy*vvp2*dtz*dtx
                             +tempwyz*vvp2*dtz*dtx;
-                        wp[k*ny*nx+j*nx+i]=2.*wp1[k*ny*nx+j*nx+i]-wp2[k*ny*nx+j*nx+i]
+                        wp[abcd]=2.*wp1[abcd]-wp2[abcd]
                             +tempwz2+tempuxz*vvp2*dtz*dtx
                             +tempvyz*vvp2*dtz*dtx
-                            +px*wave[l-1];
-                        us[k*ny*nx+j*nx+i]=2.*us1[k*ny*nx+j*nx+i]-us2[k*ny*nx+j*nx+i]+tempuy2+tempuz2
+                            +px*wwave;
+                        us[abcd]=2.*us1[abcd]-us2[abcd]+tempuy2+tempuz2
                             -tempvxy*vvs2*dtz*dtx-tempwxz*vvs2*dtz*dtx;
-                        vs[k*ny*nx+j*nx+i]=2.*vs1[k*ny*nx+j*nx+i]-vs2[k*ny*nx+j*nx+i]+tempvx2+tempvz2
+                        vs[abcd]=2.*vs1[abcd]-vs2[abcd]+tempvx2+tempvz2
                             -tempuxy*vvs2*dtz*dtx-tempwyz*vvs2*dtz*dtx;
-                        ws[k*ny*nx+j*nx+i]=2.*ws1[k*ny*nx+j*nx+i]-ws2[k*ny*nx+j*nx+i]+tempwx2+tempwy2
+                        ws[abcd]=2.*ws1[abcd]-ws2[abcd]+tempwx2+tempwy2
                             -tempuxz*vvs2*dtz*dtx-tempvyz*vvs2*dtz*dtx;
                     }//for(i=nleft;i<nright;i++) end        // until this part is main
-            #pragma omp parallel for 
+					
+            #pragma omp for 
             for(k=ntop;k<nbottom;k++)
                 for(j=nfront;j<nback;j++)
                     for(i=nleft;i<nright;i++)
                     {
+						long aabcd = k*ny*nx+j*nx+i;
                         // here is what I have to change
-                        u[k*ny*nx+j*nx+i]=up[k*ny*nx+j*nx+i]+us[k*ny*nx+j*nx+i];
-                        v[k*ny*nx+j*nx+i]=vp[k*ny*nx+j*nx+i]+vs[k*ny*nx+j*nx+i];
-                        w[k*ny*nx+j*nx+i]=wp[k*ny*nx+j*nx+i]+ws[k*ny*nx+j*nx+i];
+                        u[aabcd]=up[aabcd]+us[aabcd];
+                        v[aabcd]=vp[aabcd]+vs[aabcd];
+                        w[aabcd]=wp[aabcd]+ws[aabcd];
 
-                        up2[k*ny*nx+j*nx+i]=up1[k*ny*nx+j*nx+i];
-                        up1[k*ny*nx+j*nx+i]=up[k*ny*nx+j*nx+i];
-                        us2[k*ny*nx+j*nx+i]=us1[k*ny*nx+j*nx+i];
-                        us1[k*ny*nx+j*nx+i]=us[k*ny*nx+j*nx+i];
-                        vp2[k*ny*nx+j*nx+i]=vp1[k*ny*nx+j*nx+i];
-                        vp1[k*ny*nx+j*nx+i]=vp[k*ny*nx+j*nx+i];
-                        vs2[k*ny*nx+j*nx+i]=vs1[k*ny*nx+j*nx+i];
-                        vs1[k*ny*nx+j*nx+i]=vs[k*ny*nx+j*nx+i];
-                        wp2[k*ny*nx+j*nx+i]=wp1[k*ny*nx+j*nx+i];
-                        wp1[k*ny*nx+j*nx+i]=wp[k*ny*nx+j*nx+i];
-                        ws2[k*ny*nx+j*nx+i]=ws1[k*ny*nx+j*nx+i];
-                        ws1[k*ny*nx+j*nx+i]=ws[k*ny*nx+j*nx+i];
+                        up2[aabcd]=up1[aabcd];
+                        up1[aabcd]=up[aabcd];
+                        us2[aabcd]=us1[aabcd];
+                        us1[aabcd]=us[aabcd];
+                        vp2[aabcd]=vp1[aabcd];
+                        vp1[aabcd]=vp[aabcd];
+                        vs2[aabcd]=vs1[aabcd];
+                        vs1[aabcd]=vs[aabcd];
+                        wp2[aabcd]=wp1[aabcd];
+                        wp1[aabcd]=wp[aabcd];
+                        ws2[aabcd]=ws1[aabcd];
+                        ws1[aabcd]=ws[aabcd];
                     }//for(i=nleft;i<nright;i++) end
+					
+		}
         }//for(l=1;l<=lt;l++) end
         fwrite(up+169*ny*nx,sizeof(float),ny*nx,fout);
+    gettimeofday(&end,NULL);
+    all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
+    printf("run time:\t%f s\n",all_time);
     }//for(ishot=1;ishot<=nshot;ishot++) end
 //}
     gettimeofday(&end,NULL);
     all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
     printf("run time:\t%f s\n",all_time);
     fclose(fout);
-    
+   
+
     free(u); 
     free(v);
     free(w);
