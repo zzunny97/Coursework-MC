@@ -1,5 +1,5 @@
 ------------start time------------
-Thu 17 Oct 2019 02:40:38 PM KST
+Thu Oct 17 01:45:37 EDT 2019
 
 --------workload parameter--------
 nx=720
@@ -40,7 +40,7 @@ shot=18
 shot=19
 shot=20
 
-run time:	70.227432 s
+run time:	117.275192 s
 
 ------------end time------------
-Thu 17 Oct 2019 02:41:48 PM KST
+Thu Oct 17 01:47:35 EDT 2019

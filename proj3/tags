@@ -1,0 +1,17 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+Copy_mat	LU.cpp	/^void Copy_mat(Data** src, Data** dst) {$/;"	f
+Data	LU.cpp	/^typedef double Data;$/;"	t	file:
+Free_mat	LU.cpp	/^void Free_mat(Data** p) {$/;"	f
+Inverse_mat	LU.cpp	/^void Inverse_mat(Data** p, int size) {$/;"	f
+LU	LU.cpp	/^void LU(Data** A, Data** L, Data** U) {$/;"	f
+Mul_mat	LU.cpp	/^void Mul_mat(Data** a, Data** b, Data** ret, int size) {$/;"	f
+N	LU.cpp	/^int N;$/;"	v
+Print_mat	LU.cpp	/^void Print_mat(Data** p, int size) {$/;"	f
+block_LU	LU.cpp	/^void block_LU(Data** a, Data** l, Data** u, int size) {$/;"	f
+main	LU.cpp	/^int main(int argc, char** argv){$/;"	f
+verify	LU.cpp	/^void verify(Data** A, Data** L, Data** U, int size) {$/;"	f
