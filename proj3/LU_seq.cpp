@@ -11,7 +11,8 @@ using namespace std;
 void Print_mat(Data** p) {
     for(int i=0; i<N; i++) {
         for(int j=0; j<N; j++) {
-            cout << p[i][j] << "\t";
+            //cout << p[i][j] << "\t";
+			printf("%.3lf\t", p[i][j]);
         }
         cout << endl;
     }
@@ -103,7 +104,7 @@ int main(int argc, char** argv){
     for(int i=0; i<N; i++) L[i][i] = 1;
     for(int i=0; i<N; i++)
         for(int j=0; j<N; j++)
-            A[i][j] = rand();
+            A[i][j] = rand()%10 + 1;
 
     Copy_mat(A, A_original);
     
@@ -112,6 +113,13 @@ int main(int argc, char** argv){
 
     cout << "Verify" << endl;
     verify(A_original, L, U);
+
+	cout << "==== A ====" << endl;
+	Print_mat(A);
+	cout << "==== L ====" << endl;
+	Print_mat(L);
+	cout << "==== U ====" << endl;
+	Print_mat(U);
 
     Free_mat(A);
     Free_mat(L);
