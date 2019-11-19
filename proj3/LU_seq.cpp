@@ -3,7 +3,6 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
-#include <mpi.h>
 
 int N;
 typedef double Data;
@@ -56,17 +55,8 @@ void verify(Data** A, Data** L, Data** U) {
 }
 
 void LU(Data** A, Data** L, Data** U) {
-    MPI_Init(NULL, NULL);
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     for(int k=0; k<N; k++) {
-
-        //if(k%size == rank) {
-        //    U[k][k] = A[k][k];
-        //    L 
-        //}
         U[k][k] = A[k][k];
         for(int i=k+1; i<N; i++) {
             L[i][k] = A[i][k] / U[k][k];
@@ -77,7 +67,6 @@ void LU(Data** A, Data** L, Data** U) {
                 A[i][j] -= L[i][k] * U[k][j];
     }
 
-    MPI_Finalize();
 }
 
 int main(int argc, char** argv){
