@@ -33,7 +33,7 @@ void Free_mat(Data** p) {
 }
 
 void Inverse_mat(Data** p, int size) {
-    cout << "inverse start" << endl;
+    //cout << "inverse start" << endl;
     if(size < 2)
         return;
     else if(size == 2) {
@@ -55,28 +55,29 @@ void Inverse_mat(Data** p, int size) {
     for(int i=0; i<size; i++)
         mat[i] = new Data[2*size];
 
-    cout << "zzunny1" << endl;
+    //cout << "zzunny1" << endl;
     for(int i=0; i<size; i++) {
         for(int j=0; j<size; j++) {
             mat[i][j] = p[i][j];
         }
     }
-    cout << "zzunny2" << endl;
+    //cout << "zzunny2" << endl;
     for(int i=0; i<size; i++) {
         for(int j=size; j< 2*size; j++) {
             if(j==(i+size)) mat[i][j] = 1;
         }
     }
     
+	/*
     for(int i=0; i<size; i++) {
         for(int j=0; j<2*size; j++) {
             cout << mat[i][j] << "\t";
         }
         cout << endl;
-    }
+    }*/
     
     
-    cout << "zzunny3" << endl;
+    //cout << "zzunny3" << endl;
     Data tmp;
     
     for(int i=size-1; i>1; i--) {
@@ -91,7 +92,7 @@ void Inverse_mat(Data** p, int size) {
         }
     }
 
-    cout << "zzunny4" << endl;
+    //cout << "zzunny4" << endl;
     for(int i=0; i<size; i++) {
         for(int j=0; j<size; j++) {
             if(j!=i) {
@@ -101,7 +102,7 @@ void Inverse_mat(Data** p, int size) {
             }
         }
     }
-    cout << "zzunny5" << endl;
+    //cout << "zzunny5" << endl;
     Data** ret = new Data*[size];
     for(int i=0; i<size; i++)
         ret[i] = new Data[size];
@@ -109,7 +110,7 @@ void Inverse_mat(Data** p, int size) {
     for(int i=0; i<size; i++) 
         for(int j=0; j<size; j++) 
             ret[i][j] = mat[i][j];
-    cout << "inverse end" << endl;
+    //cout << "inverse end" << endl;
 }
 
 void verify(Data** A, Data** L, Data** U, int size) {
@@ -207,7 +208,10 @@ void LU(Data** A, Data** L, Data** U) {
 
     if(rank == 0){
         block_LU(small_A, small_L, small_U, row_per_block);  
+		cout << "rank: 0 print small_L and small_U" << endl;
+		cout << "small_L" << endl;
         Print_mat(small_L, row_per_block);
+		cout << "small_U" << endl;
         Print_mat(small_U, row_per_block);
 
         // send to row
@@ -240,6 +244,7 @@ void LU(Data** A, Data** L, Data** U) {
 			for(int i=0; i<row_per_block; i++)
 				for(int j=0; j<row_per_block; j++)
 					small_L[i][j] = oned_mat[i*row_per_block + j];
+			cout << "rank: " << rank << endl;
             Print_mat(small_L, row_per_block);
             Inverse_mat(small_L, row_per_block);
             Mul_mat(small_L, small_A, small_U, row_per_block);
@@ -259,9 +264,11 @@ void LU(Data** A, Data** L, Data** U) {
 			for(int i=0; i<row_per_block; i++)
 				for(int j=0; j<row_per_block; j++)
 					small_U[i][j] = oned_mat[i*row_per_block + j];
+			cout << "rank: " << rank << endl;
             Print_mat(small_U, row_per_block);
             Inverse_mat(small_U, row_per_block);
             Mul_mat(small_A, small_U, small_L, row_per_block);
+			free(oned_mat);
             /*
             for(int i=0; i<row_per_block; i++)
                 MPI_Send(&small_L[0][0], row_per_block, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
