@@ -252,6 +252,7 @@ void LU(Data** A, Data** L, Data** U) {
 				// get both
 				if(i==j) {
 					if(i==0 && j==0) continue;
+                    cout << "rank 0: waiting for rank-" << src << endl;
 					MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);	// recv L
 					MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv U
 					idx = 0;
@@ -262,22 +263,27 @@ void LU(Data** A, Data** L, Data** U) {
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
 							U[i][j] = oned_mat2[idx++];
+                    cout << "rank 0: gather from rank-" << src << endl;
 				}
 				// get only L
 				else if(i > j) {
+                    cout << "rank 0: waiting for rank-" << src << endl;
 					MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
 					idx = 0;
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
 							L[i][j] = oned_mat[idx++];
+                    cout << "rank 0: gather from rank-" << src << endl;
 				}
 				// get only U
 				else {
+                    cout << "rank 0: waiting for rank-" << src << endl;
 					MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
 					idx = 0;
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
 							U[i][j] = oned_mat[idx++];
+                    cout << "rank 0: gather from rank-" << src << endl;
 				}
 			}
 		}
