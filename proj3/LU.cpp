@@ -14,7 +14,7 @@ void Print_mat(Data** p, int size) {
     for(int i=0; i<size; i++) {
         for(int j=0; j<size; j++) {
             //cout << p[i][j] << "\t";
-            printf("%.2f\t", p[i][j]);
+            printf("%.3f\t", p[i][j]);
         }
         cout << endl;
     }
@@ -34,10 +34,14 @@ void Free_mat(Data** p, int size) {
 
 void Inverse_mat(Data** p, int size) {
     //cout << "inverse start" << endl;
-    if(size < 2)
+    if(size < 2) {
+		cout << "Inverse mat size < 2" << endl;
         return;
+	}
+	
+	/*
     else if(size == 2) {
-        Data prefix = p[0][0]*p[1][1] - p[0][1]*p[1][0];
+        Data prefix = 1 / (p[0][0]*p[1][1] - p[0][1]*p[1][0]);
         for(int i=0; i<size; i++) {
             for(int j=0; j<size; j++) {
                 p[i][j] *= prefix;
@@ -49,8 +53,9 @@ void Inverse_mat(Data** p, int size) {
         p[0][1] *= -1;
         p[1][0] *= -1;
         return;
-        
-    }
+    }*/
+
+	cout << "Inverse start" << endl;
     Data** mat = new Data*[size];
     for(int i=0; i<size; i++)
         mat[i] = new Data[2*size];
@@ -61,36 +66,43 @@ void Inverse_mat(Data** p, int size) {
             mat[i][j] = p[i][j];
         }
     }
+
     //cout << "zzunny2" << endl;
     for(int i=0; i<size; i++) {
         for(int j=size; j< 2*size; j++) {
-            if(j==(i+size)) mat[i][j] = 1;
+            if(j==(i+size)) 
+				mat[i][j] = 1;
         }
     }
+
+	// Print mat
+	for(int i=0; i<size; i++) {
+		for(int j=0; j<2*size; j++) {
+			printf("%.3lf ", mat[i][j]);
+		}
+		printf("\n");
+
+	}
     
-	/*
-    for(int i=0; i<size; i++) {
-        for(int j=0; j<2*size; j++) {
-            cout << mat[i][j] << "\t";
-        }
-        cout << endl;
-    }*/
-    
-    
-    //cout << "zzunny3" << endl;
     Data tmp;
-    
-    for(int i=size-1; i>1; i--) {
+    for(int i=size-1; i>0; i--) {
         //cout << "zzunny3-1" << endl;
-        if(mat[i-1][1] < mat[i][1]) {
+        if(mat[i-1][0] < mat[i][0]) {
             //cout << "zzunny3-2" << endl;
-            for(int j=0; j<2*size; j++) {
+            for(int j=0; j<size; j++) {
                 tmp = mat[i][j];
                 mat[i][j] = mat[i-1][j];
                 mat[i-1][j] = tmp;
             }
         }
     }
+	for(int i=0; i<size; i++) {
+		for(int j=0; j<2*size; j++) {
+			printf("%.3lf ", mat[i][j]);
+		}
+		printf("\n");
+
+	}
 
     //cout << "zzunny4" << endl;
     for(int i=0; i<size; i++) {
@@ -102,14 +114,32 @@ void Inverse_mat(Data** p, int size) {
             }
         }
     }
+	for(int i=0; i<size; i++) {
+		for(int j=0; j<2*size; j++) {
+			printf("%.3lf ", mat[i][j]);
+		}
+		printf("\n");
+
+	}
+	for(int i=0; i<size; i++) {
+		tmp = mat[i][i];
+		for(int j=0; j<2*size; j++) {
+			mat[i][j] /= tmp;
+
+		}
+	}
+	for(int i=0; i<size; i++) {
+		for(int j=0; j<2*size; j++) {
+			printf("%.3lf ", mat[i][j]);
+		}
+		printf("\n");
+
+	}
     //cout << "zzunny5" << endl;
-    Data** ret = new Data*[size];
-    for(int i=0; i<size; i++)
-        ret[i] = new Data[size];
 
     for(int i=0; i<size; i++) 
-        for(int j=0; j<size; j++) 
-            ret[i][j] = mat[i][j];
+        for(int j=size; j<size*2; j++) 
+            p[i][j-size] = mat[i][j];
     //cout << "inverse end" << endl;
 }
 
@@ -186,6 +216,8 @@ void LU(Data** A, Data** L, Data** U) {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+	if(rank == 0)
+		cout << "Start LU" << endl;
 
     // if N = 15 and size = 9
     int block_sq = sqrt(size);      // 3
@@ -199,19 +231,19 @@ void LU(Data** A, Data** L, Data** U) {
 	long oned_size = pow(row_per_block, 2);             // number of elements of a block
 	long idx = 0;
     cout << "rank: "  << rank <<  " x_start: " << x_start << " x_end: " << x_end
-        << " y_start: " << y_start << " y_end: " << y_end << endl;
+        << " y_start: " << y_start << " y_end: " << y_end << " row_per_block: " << row_per_block << endl;
    
     // ====== INITIALIZE SMALL MATRICES ==== 
     Data** small_A = new Data*[row_per_block];          // block A
     Data** small_L = new Data*[row_per_block];          // block L
     Data** small_U = new Data*[row_per_block];          // block U
-	Data* oned_mat = new Data[oned_size];               // oned_size == pow(row_per_block ,2)
-	Data* oned_mat2 = new Data[oned_size];
     for(int i=0; i<row_per_block; i++) {
         small_A[i] = new Data[row_per_block];
         small_L[i] = new Data[row_per_block];
         small_U[i] = new Data[row_per_block];
     }
+	Data* oned_mat = new Data[oned_size];               // oned_size == pow(row_per_block ,2)
+	Data* oned_mat2 = new Data[oned_size];
 
     for(int i=0; i<row_per_block; i++) small_L[i][i] = 1;
     
@@ -229,34 +261,35 @@ void LU(Data** A, Data** L, Data** U) {
 			for(int j=0; j<row_per_block; j++)
 				U[i][j] = small_U[i][j];
 
+        Inverse_mat(small_L, row_per_block);
+        Inverse_mat(small_U, row_per_block);
+		Copy_to_one(small_L, oned_mat, row_per_block); 
+		Copy_to_one(small_U, oned_mat2, row_per_block);
 		// send to row
         for(int dst = 1; dst<block_sq; dst++) {
-            Inverse_mat(small_L, row_per_block);
-			Copy_to_one(small_L, oned_mat, row_per_block); 
+			cout << "rank : 0 = send to " << dst << endl;
+			//Print_mat(small_L, row_per_block);
 			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to row the inverse of L
         }
-        cout << "Rank 0: send to row complete" << endl;
-
         // send to col
         for(int dst = block_sq; dst<size; dst+=block_sq) {
-            Inverse_mat(small_U, row_per_block);
-			Copy_to_one(small_U, oned_mat, row_per_block);
-			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to col the inverse of U
+			cout << "rank : 0 = send to " << dst << endl;
+			//Print_mat(small_U, row_per_block);
+			MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to col the inverse of U
         }
-        cout << "Rank 0: send to col complete" << endl;
 
 		// gather all from other processes
 		for(int i=0; i<block_sq; i++) {
 			for(int j=0; j<block_sq; j++) {
-				int src = i*block_sq + j; 
+				int src = i*block_sq + j; // src block num
 				x_start = (src / block_sq) * row_per_block;
 				y_start = (src % block_sq) * row_per_block;
 				// get both
 				if(i==j) {
-					if(i==0 && j==0) continue;
-                    cout << "rank 0: waiting for rank-" << src << endl;
+					if(i==0 && j==0)
+						continue;
 					MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);	// recv L
-					MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv U
+					MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv U	
 					idx = 0;
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
@@ -265,27 +298,22 @@ void LU(Data** A, Data** L, Data** U) {
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
 							U[i][j] = oned_mat2[idx++];
-                    cout << "rank 0: gather from rank-" << src << endl;
 				}
 				// get only L
 				else if(i > j) {
-                    cout << "rank 0: waiting for rank-" << src << endl;
 					MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
 					idx = 0;
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
 							L[i][j] = oned_mat[idx++];
-                    cout << "rank 0: gather from rank-" << src << endl;
 				}
 				// get only U
 				else {
-                    cout << "rank 0: waiting for rank-" << src << endl;
 					MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
 					idx = 0;
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
-							U[i][j] = oned_mat[idx++];
-                    cout << "rank 0: gather from rank-" << src << endl;
+							U[i][j] = oned_mat2[idx++];
 				}
 			}
 		}
@@ -300,8 +328,14 @@ void LU(Data** A, Data** L, Data** U) {
 
 		// recv and subtract
 		for(int i=0; i<rank/block_sq; i++) {
-			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, ((rank % block_sq) * block_sq) + i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);    // receive L
-			MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, rank % block_sq + (i*block_sq), 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);       // receive U
+			int src1 = (rank / block_sq) * block_sq + i;	// L
+			int src2 = (rank % block_sq) + (i * block_sq);	// U
+			//cout << "rank: " << rank << " waiting for receiving: " << src1 << " " << src2 << endl;
+			
+			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);    // receive L
+			//cout << "rank: " << rank << " received from " << src1 << " now waiting for " << src2 << endl;
+			MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src2 ,1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);       // receive U
+			//cout << "rank: " << rank << " Received: " << src1 << " " << src2 << endl;
 			idx = 0;
 			for(int i=0; i<row_per_block; i++)
 				for(int j=0; j<row_per_block; j++)
@@ -316,7 +350,20 @@ void LU(Data** A, Data** L, Data** U) {
 		}
 
 		// block LU
+		// set memory to 0 L and U
+		for(int i=0; i<row_per_block; i++) {
+			memset(small_L[i], 0, sizeof(Data) * row_per_block);
+		}
+		for(int i=0; i<row_per_block; i++)
+			small_L[i][i] = 1;
+		for(int i=0; i<row_per_block; i++) {
+			memset(small_U[i], 0, sizeof(Data) * row_per_block);
+		}
+
 		block_LU(small_A, small_L, small_U, row_per_block);
+		//cout << "rank: " << rank << endl;
+		//Print_mat(small_L, row_per_block);
+		//Print_mat(small_U, row_per_block);
 			
 		// send to master both L and U
 		Copy_to_one(small_L, oned_mat, row_per_block);
@@ -328,15 +375,15 @@ void LU(Data** A, Data** L, Data** U) {
 			// send to row the inverse of L and U
 			Inverse_mat(small_L, row_per_block);
             Inverse_mat(small_U, row_per_block);
+			Copy_to_one(small_L, oned_mat, row_per_block); 
+			Copy_to_one(small_U, oned_mat2, row_per_block);
 			int limit = (rank/block_sq+1) * block_sq;
 			for(int dst = rank+1; dst<limit; dst++) {
-				Copy_to_one(small_L, oned_mat, row_per_block); 
 				MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send row the inverse of L
 			}
 
 			// send to col the inverse of U
-			for(int dst = block_sq; dst<size; dst+=block_sq) {
-				Copy_to_one(small_U, oned_mat2, row_per_block);
+			for(int dst = rank+block_sq; dst<size; dst+=block_sq) {
 				MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send col the inverse of U
 			}
 		}
@@ -350,11 +397,18 @@ void LU(Data** A, Data** L, Data** U) {
 		for(int i=0; i<row_per_block; i++)
 			mul[i] = new Data[row_per_block];
 
-        int iter = x_start > y_start? rank%block_sq : rank/block_sq;
+        int iter = (x_start > y_start) ? (rank%block_sq) : (rank/block_sq);
+		cout << "Else-rank: " << rank << " iter: " << iter << endl;
         // multiply two matrices from row and col, and subtract from original A
         for(int i=0; i<iter; i++) {
-            MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, i*block_sq + rank % block_sq, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv L
-            MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, (rank/block_sq)*block_sq + i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv U
+			//int src1 = i*block_sq + rank%block_sq;
+			//int src2 = (rank/block_sq) * block_sq + i;
+			int src1 = (rank / block_sq) * block_sq + i;	// L
+			int src2 = (rank % block_sq) + (i * block_sq);	// U
+			//cout << "rank: " << rank << " waiting for receiving: " << src1 << " " << src2 << endl;
+            MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv L
+            MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src2, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv U
+			//cout << "rank: " << rank << " Received: " << src1 << " " << src2 << endl;
             idx = 0;
             for(int i=0; i<row_per_block; i++)
                 for(int j=0; j<row_per_block; j++)
@@ -367,32 +421,41 @@ void LU(Data** A, Data** L, Data** U) {
             Mul_mat(small_L, small_U, mul, row_per_block);
             Sub_mat(small_A, mul, row_per_block);   
         }
+		//cout << "Rank: " << rank << " x_start: " << x_start << " y_start: " << y_start << endl;
 		if(x_start > y_start) {
             // Recv inverse of U from center process
-			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, (rank / block_sq) * block_sq + ( rank % block_sq ), 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv inverse U
+			int src = (rank % block_sq) + block_sq * (rank % block_sq);
+			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv inverse U
 			idx = 0;			
 			for(int i=0; i<row_per_block; i++)
 				for(int j=0; j<row_per_block; j++)
 					small_U[i][j] = oned_mat[idx++];
+			//Print_mat(small_U, row_per_block);
             // get final L and now it's time to send to master
 			Mul_mat(small_A, small_U, mul, row_per_block);
+			cout << "rank : " << rank << " src: " << src << endl;
+			Print_mat(mul, row_per_block);
             // send final L to master
             Copy_to_one(mul, oned_mat, row_per_block);
             MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
             // send final L to row
-            for (int dst = rank+1; dst < (rank / block_sq) * block_sq + (block_sq-1); dst++) {
+            for (int dst = rank+1; dst < (rank / block_sq + 1) * block_sq ; dst++) {
                 MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
             }
 		}
 		else if (x_start < y_start) {
             // Recv inverse of L from center process
-			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, (rank / block_sq) * block_sq + ( rank % block_sq ), 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv inverse L
+			int src = (rank / block_sq) + block_sq * ( rank / block_sq);
+			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv inverse L
 			idx = 0;			
 			for(int i=0; i<row_per_block; i++)
 				for(int j=0; j<row_per_block; j++)
 					small_L[i][j] = oned_mat[idx++];
+			//Print_mat(small_L, row_per_block);
             // get final U and now it's time to send to master
-			Mul_mat(small_A, small_L, mul, row_per_block); 
+			Mul_mat(small_L, small_A, mul, row_per_block); 
+			cout << "rank : " << rank << " src: " << src << endl;
+			Print_mat(mul, row_per_block);
             // send final U to master
             Copy_to_one(mul, oned_mat, row_per_block);
             MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
@@ -404,6 +467,7 @@ void LU(Data** A, Data** L, Data** U) {
 	}
 		
 
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	if(rank == 0) {
 		cout << "===== L =====" << endl;
@@ -454,7 +518,6 @@ int main(int argc, char** argv){
     Copy_mat(A, A_original);
     //Print_mat(A);
     
-    cout << "LU decompose" << endl;
     LU(A, L, U);
 
     //Print_mat(A);
