@@ -5,11 +5,14 @@
 #include <ctime>
 #include <mpi.h>
 #include <cmath>
+#include <sys/time.h>
 
+using namespace std;
 int N;
 typedef double Data;
 Data** A_original;
-using namespace std;
+struct timeval start_point, end_point;
+double optime;
 
 void Print_mat(Data** p, int size) {
     for(int i=0; i<size; i++) {
@@ -118,7 +121,7 @@ void Inverse_mat(Data** p, int size) {
 }
 
 void verify(Data** A, Data** L, Data** U, int size) {
-    double diffMax = 0.0;
+    double errsum = 0.0;
     Data** C = new Data*[size];
     for(int i=0; i<size; i++) {
         C[i] = new Data[size];
@@ -131,12 +134,10 @@ void verify(Data** A, Data** L, Data** U, int size) {
 
     for(int i=0; i<size; i++) {
         for(int j=0; j<size; j++) {
-            double target = A[i][j] - C[i][j];
-            if(target > diffMax)
-                diffMax = target;
+			errsum += A[i][j] - C[i][j];
         }
     }
-    printf("diffMax: %.5f\n", diffMax);
+    printf("Errsum: %.5f\n", errsum);
     for(int i=0; i<size; i++)
         delete[] C[i];
     delete[] C;
@@ -196,7 +197,6 @@ void LU(Data** A, Data** L, Data** U) {
     // if N = 15 and size = 9
     int block_sq = sqrt(size);      // 3
     int row_per_block = (N / block_sq);     // 5
-    int col_per_block = (N / block_sq);     // 5
     //cout << "bound: " << bound << endl;
     int x_start = (rank / block_sq) * row_per_block;    // start of x in the process
     int x_end = x_start + row_per_block;                // end of x in the process
@@ -444,11 +444,19 @@ void LU(Data** A, Data** L, Data** U) {
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	if(rank == 0) {
-		cout << "===== L =====" << endl;
+		//cout << "===== L =====" << endl;
 		//Print_mat(L, N);
-		cout << "===== U =====" << endl;
+		//cout << "===== U =====" << endl;
 		//Print_mat(U, N);
+		gettimeofday(&end_point, NULL);
+		optime = (double)(end_point.tv_sec)+(double)(end_point.tv_usec)/1000000.0-(double)(start_point.tv_sec)-(double)(start_point.tv_usec)/1000000.0;
+
+		cout << "Initialize and LU time: " << optime << endl;
+		gettimeofday(&start_point, NULL);
 		verify(A_original, L, U, N);
+		gettimeofday(&end_point, NULL);
+		optime = (double)(end_point.tv_sec)+(double)(end_point.tv_usec)/1000000.0-(double)(start_point.tv_sec)-(double)(start_point.tv_usec)/1000000.0;
+		cout << "Verify time: " << optime << endl;
 	}
     MPI_Finalize();
 }
@@ -458,6 +466,7 @@ int main(int argc, char** argv){
         cout << "Usage: ./proj3 N Seed" << endl;
         exit(-1);
     }
+	gettimeofday(&start_point, NULL);
     N = atoi(argv[1]);
     int seed = atoi(argv[2]);
     srand(seed);

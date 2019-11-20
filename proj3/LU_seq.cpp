@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+#include <sys/time.h>
 
 int N;
 typedef double Data;
@@ -75,6 +76,10 @@ int main(int argc, char** argv){
         cout << "Usage ./proj3 N Seed" << endl;
         exit(-1);
     }
+	struct timeval start, end;
+	double time;
+
+	gettimeofday(&start, NULL);
     N = atoi(argv[1]);
     int seed = atoi(argv[2]);
     srand(seed);
@@ -110,16 +115,17 @@ int main(int argc, char** argv){
     
     cout << "LU decompose" << endl;
     LU(A, L, U);
+	gettimeofday(&end, NULL);
+	time = (double)(end.tv_sec)+(double)(end.tv_usec)/1000000.0-(double)(start.tv_sec)-(double)(start.tv_usec)/1000000.0;
 
+	cout << "Initialize and LU time: " << time << endl;
+
+	gettimeofday(&start, NULL);
     cout << "Verify" << endl;
     verify(A_original, L, U);
-
-	cout << "==== A ====" << endl;
-	Print_mat(A);
-	cout << "==== L ====" << endl;
-	Print_mat(L);
-	cout << "==== U ====" << endl;
-	Print_mat(U);
+	gettimeofday(&end, NULL);
+	time = (double)(end.tv_sec)+(double)(end.tv_usec)/1000000.0-(double)(start.tv_sec)-(double)(start.tv_usec)/1000000.0;
+	cout << "Verify time: " << time << endl;
 
     Free_mat(A);
     Free_mat(L);
