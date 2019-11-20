@@ -189,24 +189,23 @@ void LU(Data** A, Data** L, Data** U) {
 
     // if N = 15 and size = 9
     int block_sq = sqrt(size);      // 3
-    int ele_per_block = (N / block_sq)^2;   // 25
     int row_per_block = (N / block_sq);     // 5
     int col_per_block = (N / block_sq);     // 5
     //cout << "bound: " << bound << endl;
-    int x_start = (rank / block_sq) * row_per_block;
-    int x_end = x_start + row_per_block;
-    int y_start = (rank % block_sq) * row_per_block;
-    int y_end = y_start + row_per_block;
-	long oned_size = pow(row_per_block, 2);
+    int x_start = (rank / block_sq) * row_per_block;    // start of x in the process
+    int x_end = x_start + row_per_block;                // end of x in the process
+    int y_start = (rank % block_sq) * row_per_block;    // start of y in the process
+    int y_end = y_start + row_per_block;                // end of y in the process
+	long oned_size = pow(row_per_block, 2);             // number of elements of a block
 	long idx = 0;
     //cout << "rank: "  << rank <<  " x_start: " << x_start << " x_end: " << x_end
     //    << " y_start: " << y_start << " y_end: " << y_end << endl;
    
     // ====== INITIALIZE SMALL MATRICES ==== 
-    Data** small_A = new Data*[row_per_block];
-    Data** small_L = new Data*[row_per_block];
-    Data** small_U = new Data*[row_per_block];
-	Data* oned_mat = new Data[oned_size];
+    Data** small_A = new Data*[row_per_block];          // block A
+    Data** small_L = new Data*[row_per_block];          // block L
+    Data** small_U = new Data*[row_per_block];          // block U
+	Data* oned_mat = new Data[oned_size];               // oned_size == pow(row_per_block ,2)
 	Data* oned_mat2 = new Data[oned_size];
     for(int i=0; i<row_per_block; i++) {
         small_A[i] = new Data[row_per_block];
@@ -220,6 +219,7 @@ void LU(Data** A, Data** L, Data** U) {
         for(int j=y_start; j<y_end; j++)
             small_A[i-x_start][j-y_start] = A[i][j];
 
+    // if the process is master
 	if(rank == 0) {
 		block_LU(small_A, small_L, small_U, row_per_block);	
 		for(int i=0; i<row_per_block; i++)
@@ -231,21 +231,19 @@ void LU(Data** A, Data** L, Data** U) {
 
 		// send to row
         for(int dst = 1; dst<block_sq; dst++) {
+            Inverse_mat(small_L, row_per_block);
 			Copy_to_one(small_L, oned_mat, row_per_block); 
-            //for(int i=0; i<row_per_block; i++)
-            //    MPI_Send(&small_L[i][0], row_per_block, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
-			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
+			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to row the inverse of L
         }
 
         // send to col
         for(int dst = block_sq; dst<size; dst+=block_sq) {
+            Inverse_mat(small_U, row_per_block);
 			Copy_to_one(small_U, oned_mat, row_per_block);
-            //for(int i=0; i<row_per_block; i++)
-            //    MPI_Send(&small_U[i][0], row_per_block, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
-			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
+			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to col the inverse of U
         }
 
-		// gather all
+		// gather all from other processes
 		for(int i=0; i<block_sq; i++) {
 			for(int j=0; j<block_sq; j++) {
 				int src = i*block_sq + j; 
@@ -308,33 +306,30 @@ void LU(Data** A, Data** L, Data** U) {
 			Mul_mat(small_L, small_U, mul, row_per_block);
 			Sub_mat(small_A, mul, row_per_block);	
 		}
+
 		// block LU
 		block_LU(small_A, small_L, small_U, row_per_block);
 			
 		// send to master both L and U
 		Copy_to_one(small_L, oned_mat, row_per_block);
 		Copy_to_one(small_U, oned_mat2, row_per_block);
-		MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);	// send L to master
-		MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);  // send U to master
+		MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);	// send final 'L' to master
+		MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);  // send final 'U' to master
 
 		if(rank != size - 1) {
-			// send to row the inverse of L
+			// send to row the inverse of L and U
 			Inverse_mat(small_L, row_per_block);
+            Inverse_mat(small_U, row_per_block);
 			int limit = (rank/block_sq+1) * block_sq;
 			for(int dst = rank+1; dst<limit; dst++) {
 				Copy_to_one(small_L, oned_mat, row_per_block); 
-				//for(int i=0; i<row_per_block; i++)
-				//    MPI_Send(&small_L[i][0], row_per_block, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
-				MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
+				MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send row the inverse of L
 			}
 
 			// send to col the inverse of U
-			Inverse_mat(small_U, row_per_block);
 			for(int dst = block_sq; dst<size; dst+=block_sq) {
 				Copy_to_one(small_U, oned_mat2, row_per_block);
-				//for(int i=0; i<row_per_block; i++)
-				//    MPI_Send(&small_U[i][0], row_per_block, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
-				MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
+				MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send col the inverse of U
 			}
 		}
 		Free_mat(mul, row_per_block);
@@ -347,66 +342,56 @@ void LU(Data** A, Data** L, Data** U) {
 		for(int i=0; i<row_per_block; i++)
 			mul[i] = new Data[row_per_block];
 
-		// multiply two matrices from row and col, and subtract from original A
-		for(int i=0; i<rank % block_sq; i++) {
-			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, i*block_sq + rank % block_sq, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv from adjacent row
-			MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, (rank/block_sq)*block_sq + i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv from adjacent col 
-			idx = 0;
-			for(int i=0; i<row_per_block; i++)
-				for(int j=0; j<row_per_block; j++)
-					small_L[i][j] = oned_mat[idx++];
-			idx=0;
-			for(int i=0; i<row_per_block; i++)
-				for(int j=0; j<row_per_block; j++)
-					small_U[i][j] = oned_mat2[idx++];
+        int iter = x_start > y_start? rank%block_sq : rank/block_sq;
+        // multiply two matrices from row and col, and subtract from original A
+        for(int i=0; i<iter; i++) {
+            MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, i*block_sq + rank % block_sq, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv L
+            MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, (rank/block_sq)*block_sq + i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv U
+            idx = 0;
+            for(int i=0; i<row_per_block; i++)
+                for(int j=0; j<row_per_block; j++)
+                    small_L[i][j] = oned_mat[idx++];
+            idx=0;
+            for(int i=0; i<row_per_block; i++)
+                for(int j=0; j<row_per_block; j++)
+                    small_U[i][j] = oned_mat2[idx++];
 
-			Mul_mat(small_L, small_U, mul, row_per_block);
-			Sub_mat(small_A, mul, row_per_block);	
-		}
-
-		// Recv inverse and get L or U
+            Mul_mat(small_L, small_U, mul, row_per_block);
+            Sub_mat(small_A, mul, row_per_block);   
+        }
 		if(x_start > y_start) {
+            // Recv inverse of U from center process
 			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, (rank / block_sq) * block_sq + ( rank % block_sq ), 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv inverse U
 			idx = 0;			
 			for(int i=0; i<row_per_block; i++)
 				for(int j=0; j<row_per_block; j++)
 					small_U[i][j] = oned_mat[idx++];
-			Mul_mat(A, small_U, mul, row_per_block); 
+            // get final L and now it's time to send to master
+			Mul_mat(small_A, small_U, mul, row_per_block);
+            // send final L to master
+            Copy_to_one(mul, oned_mat, row_per_block);
+            MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+            // send final L to row
+            for (int dst = rank+1; dst < (rank / block_sq) * block_sq + (block_sq-1); dst++) {
+                MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
+            }
 		}
 		else if (x_start < y_start) {
+            // Recv inverse of L from center process
 			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, (rank / block_sq) * block_sq + ( rank % block_sq ), 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv inverse L
 			idx = 0;			
 			for(int i=0; i<row_per_block; i++)
 				for(int j=0; j<row_per_block; j++)
 					small_L[i][j] = oned_mat[idx++];
-			Mul_mat(A, small_L, mul, row_per_block); 
-		}
-
-
-		// send to master both L and U
-		Copy_to_one(mul, oned_mat, row_per_block);
-		MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);	// lower or upper to master
-
-		// what should I do here? block_LU or not, send what?
-		block_LU(small_A, small_L, small_U, row_per_block);
-
-		// send to row the inverse of L
-		Inverse_mat(small_L, row_per_block);
-		int limit = (rank/block_sq+1) * block_sq;
-		for(int dst = rank+1; dst<limit; dst++) {
-			Copy_to_one(small_L, oned_mat, row_per_block); 
-			//for(int i=0; i<row_per_block; i++)
-			//    MPI_Send(&small_L[i][0], row_per_block, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
-			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
-		}
-
-		// send to col the inverse of U
-		Inverse_mat(small_U, row_per_block);
-		for(int dst = rank + block_sq; dst<size; dst+=block_sq) {
-			Copy_to_one(small_U, oned_mat2, row_per_block);
-			//for(int i=0; i<row_per_block; i++)
-			//    MPI_Send(&small_U[i][0], row_per_block, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
-			MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
+            // get final U and now it's time to send to master
+			Mul_mat(small_A, small_L, mul, row_per_block); 
+            // send final U to master
+            Copy_to_one(mul, oned_mat, row_per_block);
+            MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+            // send final U to col
+            for(int dst = rank + block_sq; dst<size; dst+=block_sq) {
+                MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
+            }
 		}
 	}
 		
