@@ -198,8 +198,8 @@ void LU(Data** A, Data** L, Data** U) {
     int y_end = y_start + row_per_block;                // end of y in the process
 	long oned_size = pow(row_per_block, 2);             // number of elements of a block
 	long idx = 0;
-    //cout << "rank: "  << rank <<  " x_start: " << x_start << " x_end: " << x_end
-    //    << " y_start: " << y_start << " y_end: " << y_end << endl;
+    cout << "rank: "  << rank <<  " x_start: " << x_start << " x_end: " << x_end
+        << " y_start: " << y_start << " y_end: " << y_end << endl;
    
     // ====== INITIALIZE SMALL MATRICES ==== 
     Data** small_A = new Data*[row_per_block];          // block A
@@ -235,6 +235,7 @@ void LU(Data** A, Data** L, Data** U) {
 			Copy_to_one(small_L, oned_mat, row_per_block); 
 			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to row the inverse of L
         }
+        cout << "Rank 0: send to row complete" << endl;
 
         // send to col
         for(int dst = block_sq; dst<size; dst+=block_sq) {
@@ -242,6 +243,7 @@ void LU(Data** A, Data** L, Data** U) {
 			Copy_to_one(small_U, oned_mat, row_per_block);
 			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to col the inverse of U
         }
+        cout << "Rank 0: send to col complete" << endl;
 
 		// gather all from other processes
 		for(int i=0; i<block_sq; i++) {
