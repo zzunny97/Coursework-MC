@@ -1,5 +1,5 @@
 all:
-	mpic++ -g -Wall -o proj3 LU.cpp
+	mpic++ -g -Wall -o proj3 LU.cpp -lm
 
 seq:
 	g++ LU_seq.cpp -o LU_seq

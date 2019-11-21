@@ -9,10 +9,13 @@
 
 using namespace std;
 int N;
+int original_N;
 typedef double Data;
 Data** A_original;
 struct timeval start_point, end_point;
 double optime;
+int rank;
+int process_size;
 
 void Print_mat(Data** p, int size) {
     for(int i=0; i<size; i++) {
@@ -187,15 +190,10 @@ void Copy_to_two(Data* src, Data** dst, int size) {
 
 
 void LU(Data** A, Data** L, Data** U) {
-    MPI_Init(NULL, NULL);
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
 	if(rank == 0)
 		cout << "Start LU" << endl;
 
-    // if N = 15 and size = 9
-    int block_sq = sqrt(size);      // 3
+    int block_sq = sqrt(process_size);      // 3
     int row_per_block = (N / block_sq);     // 5
     //cout << "bound: " << bound << endl;
     int x_start = (rank / block_sq) * row_per_block;    // start of x in the process
@@ -246,7 +244,7 @@ void LU(Data** A, Data** L, Data** U) {
 			MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to row the inverse of L
         }
         // send to col
-        for(int dst = block_sq; dst<size; dst+=block_sq) {
+        for(int dst = block_sq; dst<process_size; dst+=block_sq) {
 			//cout << "rank : 0 = send to " << dst << endl;
 			//Print_mat(small_U, row_per_block);
 			MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to col the inverse of U
@@ -345,7 +343,7 @@ void LU(Data** A, Data** L, Data** U) {
 		MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);	// send final 'L' to master
 		MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);  // send final 'U' to master
 
-		if(rank != size - 1) {
+		if(rank != process_size - 1) {
 			// send to row the inverse of L and U
 			Inverse_mat(small_L, row_per_block);
             Inverse_mat(small_U, row_per_block);
@@ -357,7 +355,7 @@ void LU(Data** A, Data** L, Data** U) {
 			}
 
 			// send to col the inverse of U
-			for(int dst = rank+block_sq; dst<size; dst+=block_sq) {
+			for(int dst = rank+block_sq; dst<process_size; dst+=block_sq) {
 				MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send col the inverse of U
 			}
 		}
@@ -434,7 +432,7 @@ void LU(Data** A, Data** L, Data** U) {
             Copy_to_one(mul, oned_mat, row_per_block);
             MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
             // send final U to col
-            for(int dst = rank + block_sq; dst<size; dst+=block_sq) {
+            for(int dst = rank + block_sq; dst<process_size; dst+=block_sq) {
                 MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
             }
 		}
@@ -458,7 +456,6 @@ void LU(Data** A, Data** L, Data** U) {
 		optime = (double)(end_point.tv_sec)+(double)(end_point.tv_usec)/1000000.0-(double)(start_point.tv_sec)-(double)(start_point.tv_usec)/1000000.0;
 		cout << "Verify time: " << optime << endl;
 	}
-    MPI_Finalize();
 }
 
 int main(int argc, char** argv){
@@ -468,8 +465,18 @@ int main(int argc, char** argv){
     }
 	gettimeofday(&start_point, NULL);
     N = atoi(argv[1]);
+	original_N = atoi(argv[1]);
     int seed = atoi(argv[2]);
     srand(seed);
+    MPI_Init(NULL, NULL);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &process_size);
+	int sq_pr = sqrt(process_size);	
+	if(N % sq_pr != 0) {
+		if(rank == 0)
+			cout << "Resizeing original matrix from " << N << " to " << N+(sq_pr - (N%sq_pr)) << endl;
+		N += (sq_pr - (N%sq_pr)); // 3 - 1
+	}
 
     //cout << "Initialize" << endl;
     A_original = new Data*[N];    
@@ -494,9 +501,29 @@ int main(int argc, char** argv){
     }
 
     for(int i=0; i<N; i++) L[i][i] = 1;
-    for(int i=0; i<N; i++)
-        for(int j=0; j<N; j++)
-            A[i][j] = rand() % 10 + 1;
+
+	// resized
+	if(original_N != N) {
+		for(int i=0; i<original_N; i++)
+			for(int j=0; j<original_N; j++) 
+				A[i][j] = rand() % 10 + 1;
+		for(int i=original_N; i<N; i++) {
+			for(int j=original_N; j<N; j++) {
+				if(i==j) A[i][j] = 1;
+				else A[i][j] = 0;
+			}
+		}
+	}
+
+	// not resized
+	else{
+		for(int i=0; i<N; i++) {
+			for(int j=0; j<N; j++) {
+				A[i][j] = rand() % 10 + 1;
+			}
+		}
+	}
+
 
     Copy_mat(A, A_original);
     //Print_mat(A);
@@ -512,5 +539,6 @@ int main(int argc, char** argv){
     Free_mat(A, N);
     Free_mat(L, N);
     Free_mat(U, N);
+    MPI_Finalize();
     return 0;
 }
