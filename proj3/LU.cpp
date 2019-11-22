@@ -28,6 +28,16 @@ void Print_mat(Data** p, int size) {
     cout << endl;
 }
 
+void Print_mat2(Data** p, int size1, int size2) {
+	for(int i=0; i<size1; i++) {
+		for(int j=0; j<size2; j++) {
+			printf("%.3f\t\t", p[i][j]);
+		}
+		cout << endl;
+	}
+	cout << endl;
+}
+
 void Copy_mat(Data** src, Data** dst, int size) {
     for(int i=0; i<size; i++) 
         memcpy(dst[i], src[i], sizeof(Data)* size);
@@ -58,11 +68,13 @@ void Inverse_mat(Data** p, int size) {
         p[1][0] *= -1;
         return;
     }
-	
-    Data** mat = new Data*[size];
+
 	Data tmp;
-    for(int i=0; i<size; i++)
+    Data** mat = new Data*[size];
+    for(int i=0; i<size; i++) {
         mat[i] = new Data[2*size];
+		memset(mat[i], 0, sizeof(Data)*2*size);
+	}
 
     for(int i=0; i<size; i++) {
         for(int j=0; j<size; j++) {
@@ -70,12 +82,19 @@ void Inverse_mat(Data** p, int size) {
         }
     }
 
+
     for(int i=0; i<size; i++) {
-        for(int j=0; j< 2*size; j++) {
-            if(j==(i+size)) 
+        for(int j=size; j< 2*size; j++) {
+            if(j==(i+size)) {
 				mat[i][j] = 1;
+			}
+			// else {
+			// 	mat[i][j] = 0;
+			// }
         }
     }
+
+
     for(int i=size-1; i>0; i--) {
         if(mat[i-1][0] < mat[i][0]) {
 			Data* tmp2;
@@ -95,7 +114,6 @@ void Inverse_mat(Data** p, int size) {
             }
         }
     }
-
 	for(int i=0; i<size; i++) {
 		tmp = mat[i][i];
 		for(int j=0; j<2*size; j++) {
@@ -122,7 +140,7 @@ void verify(Data** A, Data** L, Data** U, int size) {
 			}
 			norm += pow(A[i][j] - tmp, 2);
 		}
-		printf("Errsum: %.9lf\n", errsum);
+		printf("Errsum %d: %.9lf\n", i, errsum);
 		errsum += sqrt(norm);
 	}
     printf("Errsum: %.9lf\n", errsum);
@@ -247,48 +265,102 @@ void LU(Data** A, Data** L, Data** U) {
 			MPI_Send(&oned_mat2[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD); // send to col the inverse of U
         }
 
-		// gather all from other processes
-		for(int i=0; i<block_sq; i++) {
-			for(int j=0; j<block_sq; j++) {
-				int src = i*block_sq + j;
-				x_start = (src / block_sq) * row_per_block;
-				y_start = (src % block_sq) * row_per_block;
-				// get both
-				if(i==j) {
-					if(i==0 && j==0)
-						continue;
-					MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);	// recv L
-					MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv U	
-					idx = 0;
-					for(int i=x_start; i<x_start+row_per_block; i++) 
-						for(int j=y_start; j<y_start+row_per_block; j++)
-							L[i][j] = oned_mat[idx++];
-					idx = 0;
-					for(int i=x_start; i<x_start+row_per_block; i++) 
-						for(int j=y_start; j<y_start+row_per_block; j++)
-							U[i][j] = oned_mat2[idx++];
-					cout << "gathered " << src << endl;
-				}
-				// get only L
-				else if(i > j) {
+		for(int i=0; i<block_sq; i++){
+			int center = (i * block_sq) + i;
+			//cout << "center: " << center << endl;
+			int x_start, y_start;
+			// gather from center
+			if(center != 0)	{
+				x_start = (center / block_sq) * row_per_block;
+				y_start = (center % block_sq) * row_per_block;
+				//cout << "center: " << center << " x_start: " << x_start << " y_start: " << y_start << endl;
+				MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, center, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, center, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				idx = 0;
+				for(int i=x_start; i<x_start+row_per_block; i++) 
+					for(int j=y_start; j<y_start+row_per_block; j++)
+						L[i][j] = oned_mat[idx++];
+				idx = 0;
+				for(int i=x_start; i<x_start+row_per_block; i++) 
+					for(int j=y_start; j<y_start+row_per_block; j++)
+						U[i][j] = oned_mat2[idx++];
+				//cout << "gathered " << center << endl;
+			}
+			else if(center == process_size - 1) {
+				break;
+			}
+
+			// gather from row
+				for(int src=center+1; src<(i+1)*block_sq; src++) {
+					x_start = (src / block_sq) * row_per_block;
+					y_start = (src % block_sq) * row_per_block;
+					//cout << "normal: " << src << " x_start: " << x_start << " y_start: " << y_start << endl;
+
 					MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
 					idx = 0;
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
-							L[i][j] = oned_mat[idx++];
-					cout << "gathered " << src << endl;
+							U[i][j] = oned_mat[idx++];
+					//cout << "gathered " << src << endl;
 				}
-				// get only U
-				else {
+				// gather from col
+				for(int src=center+block_sq; src<process_size; src+=block_sq) {
+					x_start = (src / block_sq) * row_per_block;
+					y_start = (src % block_sq) * row_per_block;
+					//cout << "normal: " << src << " x_start: " << x_start << " y_start: " << y_start << endl;
+
 					MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
 					idx = 0;
 					for(int i=x_start; i<x_start+row_per_block; i++) 
 						for(int j=y_start; j<y_start+row_per_block; j++)
-							U[i][j] = oned_mat2[idx++];
-					cout << "gathered " << src << endl;
+							L[i][j] = oned_mat2[idx++];
+					//cout << "gathered " << src << endl;
 				}
-			}
+
+
 		}
+		// // gather all from other processes
+		// for(int i=0; i<block_sq; i++) {
+		// 	for(int j=0; j<block_sq; j++) {
+		// 		int src = i*block_sq + j;
+		// 		x_start = (src / block_sq) * row_per_block;
+		// 		y_start = (src % block_sq) * row_per_block;
+		// 		// get both
+		// 		if(i==j) {
+		// 			if(i==0 && j==0)
+		// 				continue;
+		// 			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);	// recv L
+		// 			MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  // recv U	
+		// 			idx = 0;
+		// 			for(int i=x_start; i<x_start+row_per_block; i++) 
+		// 				for(int j=y_start; j<y_start+row_per_block; j++)
+		// 					L[i][j] = oned_mat[idx++];
+		// 			idx = 0;
+		// 			for(int i=x_start; i<x_start+row_per_block; i++) 
+		// 				for(int j=y_start; j<y_start+row_per_block; j++)
+		// 					U[i][j] = oned_mat2[idx++];
+		// 			cout << "gathered " << src << endl;
+		// 		}
+		// 		// get only L
+		// 		else if(i > j) {
+		// 			MPI_Recv(&oned_mat[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
+		// 			idx = 0;
+		// 			for(int i=x_start; i<x_start+row_per_block; i++) 
+		// 				for(int j=y_start; j<y_start+row_per_block; j++)
+		// 					L[i][j] = oned_mat[idx++];
+		// 			cout << "gathered " << src << endl;
+		// 		}
+		// 		// get only U
+		// 		else {
+		// 			MPI_Recv(&oned_mat2[0], oned_size, MPI_DOUBLE, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); // recv L
+		// 			idx = 0;
+		// 			for(int i=x_start; i<x_start+row_per_block; i++) 
+		// 				for(int j=y_start; j<y_start+row_per_block; j++)
+		// 					U[i][j] = oned_mat2[idx++];
+		// 			cout << "gathered " << src << endl;
+		// 		}
+		// 	}
+		// }
 	}
 
 	// center processes 
@@ -430,7 +502,12 @@ void LU(Data** A, Data** L, Data** U) {
 		gettimeofday(&end_point, NULL);
 		optime = (double)(end_point.tv_sec)+(double)(end_point.tv_usec)/1000000.0-(double)(start_point.tv_sec)-(double)(start_point.tv_usec)/1000000.0;
 		cout << "Initialize and LU time: " << optime << endl;
-		//verify(A_original, L, U, N);
+		//cout << "===== L =====" << endl;
+		//Print_mat(L, N);
+		//cout << "===== U =====" << endl;
+		//Print_mat(U, N);
+
+		// verify(A_original, L, U, N);
 	}
 	gettimeofday(&start_point, NULL);
 
@@ -486,7 +563,7 @@ void LU(Data** A, Data** L, Data** U) {
 	optime = (double)(end_point.tv_sec)+(double)(end_point.tv_usec)/1000000.0-(double)(start_point.tv_sec)-(double)(start_point.tv_usec)/1000000.0;
 
 	if(rank == 0){
-		printf("Errsum: %.9lf\n", errsum);
+		printf("Errsum by parallelize: %.9lf\n", errsum);
 		//cout << "Errsum: " << errsum << endl;
 		cout << "Verify time: " << optime << endl;
 	}
@@ -507,17 +584,18 @@ int main(int argc, char** argv){
     MPI_Comm_size(MPI_COMM_WORLD, &process_size);
 	int sq_pr = sqrt(process_size);
 
-	// if(N % sq_pr != 0) {
-	// 	N += (sq_pr - (N % sq_pr));
-	// 	if(rank == 0) {
-	// 		cout << "Resizing original matrix from " << original_N << " to " << N << endl;
-	// 		cout << "original_N: " << original_N << endl;
-	// 		cout << "resized_N: " << N << endl;
-	// 	}
-	// }
+	if(N % sq_pr != 0) {
+		N += (sq_pr - (N % sq_pr));
+		if(rank == 0) {
+			cout << "Resizing original matrix from " << original_N << " to " << N << endl;
+			cout << "original_N: " << original_N << endl;
+			cout << "resized_N: " << N << endl;
+		}
+	}
 
     A_original = new Data*[N];    
     for(int i=0; i<N; i++) A_original[i] = new Data[N];
+
 
     Data** A = new Data*[N];
     for(int i=0; i<N; i++) {
@@ -541,7 +619,6 @@ int main(int argc, char** argv){
 
 	// resized
 	if(original_N != N) {
-		cout << "Resizing" << endl;
 		for(int i=0; i<original_N; i++)
 			for(int j=0; j<original_N; j++) 
 				A[i][j] = (int)rand()%1000 + 1;
