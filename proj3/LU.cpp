@@ -95,16 +95,20 @@ void Inverse_mat(Data** p, int size) {
     }
 
 
-    for(int i=size-1; i>0; i--) {
-        if(mat[i-1][0] < mat[i][0]) {
-			Data* tmp2;
-            for(int j=0; j<2*size; j++) {
-                tmp2 = mat[i];
-                mat[i] = mat[i-1];
-                mat[i-1] = tmp2;
-            }
-        }
-    }
+    // for(int i=size-1; i>0; i--) {
+    //     if(mat[i-1][0] < mat[i][0]) {
+	// 		Data* tmp2;
+	// 		/*
+    //         for(int j=0; j<2*size; j++) {
+    //             tmp2 = mat[i];
+    //             mat[i] = mat[i-1];
+    //             mat[i-1] = tmp2;
+    //         }*/
+	// 		tmp2 = mat[i];
+	// 		mat[i] = mat[i-1];
+	// 		mat[i-1] = tmp2;
+	// 	}
+    // }
     for(int i=0; i<size; i++) {
         for(int j=0; j<size; j++) {
             if(j!=i) {
@@ -489,6 +493,7 @@ void LU(Data** A, Data** L, Data** U) {
                 MPI_Send(&oned_mat[0], oned_size, MPI_DOUBLE, dst, 1, MPI_COMM_WORLD);
             }
 		}
+		Free_mat(mul, row_per_block);
 	}
 		
 	
@@ -501,7 +506,7 @@ void LU(Data** A, Data** L, Data** U) {
 	if(rank == 0) {
 		gettimeofday(&end_point, NULL);
 		optime = (double)(end_point.tv_sec)+(double)(end_point.tv_usec)/1000000.0-(double)(start_point.tv_sec)-(double)(start_point.tv_usec)/1000000.0;
-		cout << "Initialize and LU time: " << optime << endl;
+		cout << "Initialize and LU time: " << optime << " secs" << endl;
 		//cout << "===== L =====" << endl;
 		//Print_mat(L, N);
 		//cout << "===== U =====" << endl;
@@ -522,7 +527,7 @@ void LU(Data** A, Data** L, Data** U) {
 	if(N % row_per_process != 0) {
 		if(rank == process_size - 1) {
 			my_end = N;
-			cout << "I am last rank: " << "start = " << my_start << " end = " << my_end << endl;
+			// cout << "I am last rank: " << "start = " << my_start << " end = " << my_end << endl;
 		}
 	}
 
@@ -565,8 +570,13 @@ void LU(Data** A, Data** L, Data** U) {
 	if(rank == 0){
 		printf("Errsum by parallelize: %.9lf\n", errsum);
 		//cout << "Errsum: " << errsum << endl;
-		cout << "Verify time: " << optime << endl;
+		cout << "Verify time: " << optime << " secs" << endl;
 	}
+	Free_mat(small_A, row_per_block);
+	Free_mat(small_L, row_per_block);
+	Free_mat(small_U, row_per_block);
+	free(oned_mat);
+	free(oned_mat2);
 }
 
 int main(int argc, char** argv){
@@ -644,8 +654,13 @@ int main(int argc, char** argv){
 	// 	Print_mat(A, N);
 	// }
     Copy_mat(A, A_original, N);
-    
-    
+	gettimeofday(&end_point, NULL);
+	optime = (double)(end_point.tv_sec)+(double)(end_point.tv_usec)/1000000.0-(double)(start_point.tv_sec)-(double)(start_point.tv_usec)/1000000.0;
+	if(rank == 0)
+		cout << "Initialize matrix time: " << optime << " secs, now start LU" << endl;
+
+
+    gettimeofday(&start_point, NULL);
     LU(A, L, U);
 
 	Free_mat(A_original, N);

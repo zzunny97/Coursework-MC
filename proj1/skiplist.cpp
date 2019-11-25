@@ -32,16 +32,13 @@ pthread_mutex_t m2=PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t m3=PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t nonempty=PTHREAD_COND_INITIALIZER;
-pthread_cond_t nonfull=PTHREAD_COND_INITIALIZER;
-int put;
-int get;
 
 
 typedef struct padded_int {
-	long local_odd;
-	long local_sum;
-	char padding[48];
+	long local_odd;	//8
+	long local_sum;	//8
+	char padding[48];	//48
+	// 16+48 = 64
 } private_cnt;
 
 
@@ -50,7 +47,8 @@ public:
 	char action;		//1
 	int num;				//4
 	Node* next;			//8
-	char padding[3];
+	char padding[3];	//3
+	// 13+3 =16
 	Node(char act, int n);
 };
 
@@ -65,9 +63,11 @@ Node::Node(char act, int n) {
 
 class Queue{
 public:
-	int size;
-	Node* front;
-	Node* rear;
+	int size; //4
+	Node* front; //8
+	Node* rear; //8
+	char padding[12];
+	//16 + 4 + 12
 	
 	Queue();
 	void enq(char act, int n);
@@ -79,6 +79,7 @@ Queue::Queue() {
 	size = 0;
 	front = NULL;
 	rear = NULL;
+	for(int i=0; i<12; i++) padding[i] = '0';
 }
 
 void Queue::enq(char act, int n) {
@@ -188,7 +189,7 @@ void* do_work(void* tid)
 		}
 		Node* inst = q.deq();
 		idx++;
-        if(idx % 10000 == 0) cout << idx << endl;
+        //if(idx % 10000 == 0) cout << idx << endl;
 		
 		pthread_mutex_unlock(&m1);
 		action = inst->action;

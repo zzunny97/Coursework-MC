@@ -232,7 +232,7 @@ class skiplist
 
                 for(int level=tmp; level>=1; level--) {
                     if(update[level] != update2[level]){
-                        cout << "DIFFERENT UPDATE VALLUE******* " << endl;
+                        //cout << "DIFFERENT UPDATE VALLUE******* " << endl;
                         update[level] = update2[level];
                     }
                 }
