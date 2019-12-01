@@ -5,8 +5,8 @@ __global__ void CountSort(int*, int*, int, int);
 
 __host__ void counting_sort(int arr[], int size, int max_val)
 {
-	int block_num = 2;
-	int thread_num_per_block = 5;
+	int block_num = 100;
+	int thread_num_per_block = 100;
 
 	int* dhisto;
 	int* histo = (int*)malloc(sizeof(int)*max_val*block_num);
@@ -38,8 +38,8 @@ __host__ void counting_sort(int arr[], int size, int max_val)
 	int* histo2 = (int*)malloc(sizeof(int)*max_val);
 	memset(histo2, 0, sizeof(int)*max_val);
 	for(int i=0; i<max_val; i++) {
-		for(int j=0; j<2; j++) {
-			histo2[i] += histo[i*2+j];
+		for(int j=0; j<block_num; j++) {
+			histo2[i] += histo[i*block_num+j];
 		}
 	}
 	int cnt2=0;
