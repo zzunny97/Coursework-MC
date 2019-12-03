@@ -4,6 +4,6 @@ all:
 	nvcc -o driver1 counting_sort.cu driver1.cpp
 
 clean:
-	rm driver1
+	rm -f driver1
 
 
