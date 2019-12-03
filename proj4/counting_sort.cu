@@ -1,12 +1,13 @@
 #include <cuda.h>
 #include <stdio.h>
+#include <string.h>
 
 __global__ void CountSort(int*, int*, int, int);
 
-__host__ void counting_sort(int arr[], int size, int max_val)
+__host__ void counting_sort(int* arr, int size, int max_val)
 {
-	int block_num = 100;
-	int thread_num_per_block = 50;
+	int block_num = 5;
+	int thread_num_per_block = 1000;
 	uint64_t histo_size = sizeof(int)*max_val*block_num;
 	printf("size: %d\n", size);
 	printf("max_val: %d\n", max_val);
@@ -14,63 +15,34 @@ __host__ void counting_sort(int arr[], int size, int max_val)
 	printf("thread_per_block: %d\n", thread_num_per_block);
 
 	int* dhisto;
-	int* histo = (int*)malloc(histo_size);
-	memset(histo, 0, histo_size);
+	//memset(histo, 0, histo_size);
 	cudaMalloc(&dhisto, histo_size);
-	cudaMemcpy(dhisto, histo, histo_size, cudaMemcpyHostToDevice);
+	cudaMemset(dhisto, 0, histo_size);
+	//cudaMemcpy(dhisto, histo, histo_size, cudaMemcpyHostToDevice);
 
 	int* darr;
 	cudaMalloc(&darr, sizeof(int)*size);
 	cudaMemcpy(darr, arr, sizeof(int)*size, cudaMemcpyHostToDevice); 
 
+	printf("countsort start\n");
 	CountSort<<<block_num, thread_num_per_block>>>(darr, dhisto, size, max_val);
-	cudaMemcpy(histo, dhisto, histo_size, cudaMemcpyDeviceToHost);
-
+	printf("countsort end\n");
+	
+	int* histo = (int*)calloc(max_val, sizeof(int)); 
+	cudaMemcpy(histo, dhisto, sizeof(int)*max_val, cudaMemcpyDeviceToHost);
+	
+	
 	/*
 	int cnt = 0;
-	for(int i=0; i<max_val*block_num; i++) {
+	for(int i=0; i<max_val; i++) {
 		cnt += histo[i];
-	}
-
-	for(int i=0; i<max_val*block_num; i++) {
-		if(histo[i] != 0) {
-			printf("%d: %d\n", i % max_val, histo[i]);
-		}
 	}
 	printf("cnt: %d\n", cnt);
 	*/
 	
 	int idx = 0;
-	int* histo2 = (int*)malloc(sizeof(int)*max_val);
-
-	memset(histo2, 0, sizeof(int)*max_val);
-
-	// ======== version 1 ======
-	/*
 	for(int i=0; i<max_val; i++) {
-		for(int j=0; j<block_num; j++) {
-			histo2[i] += histo[i*block_num+j];
-		}
-	}
-	*/
-
-	// ======== version 2 ======
-	for(int i=0; i<block_num; i++) {
-		for(int j=0; j<max_val; j++) {
-			histo2[j] += histo[i*max_val+j];
-		}
-	}
-
-	/*
-	int cnt2=0;
-	for(int i=0; i<max_val; i++) {
-		cnt2 += histo2[i];
-	}
-	printf("cnt2: %d\n", cnt2);
-	*/
-
-	for(int i=0; i<max_val; i++) {
-		for(int j=0; j<histo2[i]; j++) {
+		for(int j=0; j<histo[i]; j++) {
 			arr[idx++] = i;
 		}
 	}
@@ -85,7 +57,7 @@ __global__ void CountSort(int* darr, int* dhisto, int size, int max_val) {
 	int total_block = gridDim.x;
 	int bid = blockIdx.x;
 	int tid = threadIdx.x;
-	int size_per_block, bstart, size_per_thread, start, end;
+	uint64_t size_per_block, bstart, size_per_thread, start, end;
 
 	// intialize parallel count arr - need to be fixed
 	/*
@@ -100,14 +72,35 @@ __global__ void CountSort(int* darr, int* dhisto, int size, int max_val) {
 		dhisto[i] = 0;
 	}*/
 
-	__syncthreads();
+	//__syncthreads();
 
 	// update histogram	in each block
-	size_per_block = size / total_block;
-	bstart = bid * size_per_block;	
-	size_per_thread = size_per_block / thread_per_block;
-	start = bstart + tid * size_per_thread;
-	end = start + size_per_thread;
+	if(size % total_block != 0 && bid == total_block - 1) {
+		size_per_block = size / total_block + size % total_block;
+		bstart = bid * (size / total_block);
+		size_per_thread = size_per_block / thread_per_block;
+		start = bstart + tid * size_per_thread;
+		if(size_per_block % thread_per_block != 0 && 
+				tid == thread_per_block - 1) {
+			end = start + size_per_thread + size_per_block % thread_per_block;
+		}
+		else {
+			end = start + size_per_thread;
+		}
+	}
+	else {
+		size_per_block = size / total_block;
+		bstart = bid * size_per_block;	
+		size_per_thread = size_per_block / thread_per_block;
+		start = bstart + tid * size_per_thread;
+		if(size_per_block % thread_per_block != 0 && tid == thread_per_block - 1) {
+			end = start + size_per_thread + size_per_block % thread_per_block;
+		}
+		else {
+			end = start + size_per_thread;
+		}
+	}
+	//printf("bid: %d tid: %d start: %d end: %d\n", bid, tid, start, end);
 	// ========= version 1 =====
 	/*
 	for(int i=start; i<end; i++) {
@@ -117,9 +110,25 @@ __global__ void CountSort(int* darr, int* dhisto, int size, int max_val) {
 	}*/
 
 	// ========= version 2 =====
-	for(int i=start; i<end; i++) {
+	for(uint64_t i=start; i<end; i++) {
 		atomicAdd(&dhisto[darr[i] + bid * max_val], 1);
 	}
 	__syncthreads();
+
+	size_per_block = max_val;
+	bstart = bid * size_per_block;
+	size_per_thread = size_per_block / thread_per_block;
+	start = bstart + tid * size_per_thread;
+	end = start + size_per_thread;
+
+	if(bid != 0) {
+		for(uint64_t i=start; i<end; i++) {
+			atomicAdd(&dhisto[i%max_val], dhisto[i]);
+		}
+	}
+
+
+	__syncthreads();
+
 
 }

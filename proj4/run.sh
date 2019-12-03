@@ -1,1 +1,1 @@
-./driver1
+time ./driver1
