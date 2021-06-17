@@ -2,4 +2,4 @@
   ##### project1. parallelizing skiplist (Pthread)
   ##### project2. parallelizing 3d elastic (ASC problem) (OpenMP)
   ##### project3. parallelizing LU factorization (MPI)
-  ##### project4. uda counting sort
+  ##### project4. cuda counting sort
